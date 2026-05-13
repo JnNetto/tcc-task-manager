@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/models/task.dart';
 import '../domain/repositories/task_repository.dart';
+import '../utils/task_list_error_messages.dart';
 
 class TaskProvider extends ChangeNotifier {
   static const _kTaskOrderIds = 'task_order_ids_v1';
@@ -33,7 +34,16 @@ class TaskProvider extends ChangeNotifier {
 
   List<Task> get tasks => _tasks;
   bool get isLoading => _loading;
+
+  /// Erro bruto da stream (telemetria / debug).
   Object? get error => _error;
+
+  /// Mensagem para mostrar ao utilizador (sem `OfflineException`, etc.).
+  String? get loadErrorMessage =>
+      _error != null ? taskListLoadErrorMessage(_error) : null;
+
+  /// Lista vazia + a carregar: ecrã de espera completo. Com dados em cache, o recarregar não bloqueia a lista.
+  bool get showBlockingLoader => _loading && _tasks.isEmpty;
 
   Future<void> _init() async {
     await _loadOrder();
@@ -69,8 +79,19 @@ class TaskProvider extends ChangeNotifier {
     return ordered;
   }
 
-  void _bind() {
-    _loading = true;
+  /// Volta a subscrever a lista (útil na janela de degradação ou após falha de rede).
+  Future<void> refreshTasks() async {
+    await _sub?.cancel();
+    _sub = null;
+    _error = null;
+    notifyListeners();
+    _bind(isRefresh: _tasks.isNotEmpty);
+  }
+
+  void _bind({bool isRefresh = false}) {
+    if (!isRefresh) {
+      _loading = true;
+    }
     notifyListeners();
     _sub = _repository.watchTasks().listen(
       (data) {

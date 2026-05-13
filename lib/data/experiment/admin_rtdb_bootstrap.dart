@@ -50,6 +50,8 @@ class AdminRtdbBootstrap {
           'age': 30,
           'gender': 'prefer_not',
           'education': 'edu_skip',
+          'consent_version': 'debug-admin',
+          'consent_accepted_at': '1970-01-01T00:00:00.000Z',
         },
       };
 }

@@ -114,6 +114,8 @@ class AdminStudyRemoteService {
         'age': 25,
         'gender': 'prefer_not',
         'education': 'edu_skip',
+        'consent_version': 'admin-provisioned',
+        'consent_accepted_at': DateTime.now().toUtc().toIso8601String(),
       },
     });
   }

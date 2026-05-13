@@ -361,11 +361,28 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
     Future<void> saveAction() async {
       if (_isEdit) {
         await repo.updateTask(task);
-        await NotificationService.rescheduleForTask(task);
       } else {
         await repo.createTask(task);
-        if (task.reminderAt != null || task.isRecurring) {
+      }
+      // Lembrete é best-effort: falha no agendamento não deve apagar o sucesso
+      // em Firestore/offline nem mostrar erro como se a tarefa não tivesse sido guardada.
+      try {
+        if (_isEdit) {
+          await NotificationService.rescheduleForTask(task);
+        } else if (task.reminderAt != null || task.isRecurring) {
           await NotificationService.scheduleForTask(task);
+        }
+      } catch (e, st) {
+        debugPrint('Agendamento de lembrete apos guardar tarefa: $e\n$st');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Tarefa guardada. O lembrete pode nao ter sido agendado — '
+                'verifique permissoes de notificacao nas definicoes.',
+              ),
+            ),
+          );
         }
       }
     }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/models/profile_questionnaire.dart';
+import '../legal/research_consent.dart';
 
 /// Questionário básico após o código (nome, idade, género, escolaridade).
 class ParticipantProfileScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _ParticipantProfileScreenState extends State<ParticipantProfileScreen> {
   final _ageCtrl = TextEditingController();
   String? _gender;
   String? _education;
+  bool _consentAccepted = false;
   bool _submitting = false;
 
   static const _genderOptions = [
@@ -49,6 +51,30 @@ class _ParticipantProfileScreenState extends State<ParticipantProfileScreen> {
     super.dispose();
   }
 
+  void _openConsentTerms() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(ResearchConsent.title),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: SelectableText(
+              ResearchConsent.fullText,
+              style: const TextStyle(height: 1.35),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Fechar'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_gender == null || _education == null) {
@@ -57,15 +83,28 @@ class _ParticipantProfileScreenState extends State<ParticipantProfileScreen> {
       );
       return;
     }
+    if (!_consentAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Leia o termo de consentimento e marque a opção de concordância para continuar.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _submitting = true);
     try {
       final age = int.parse(_ageCtrl.text.trim());
+      final acceptedAt = DateTime.now().toUtc().toIso8601String();
       await widget.onSubmit(
         ProfileQuestionnaire(
           name: _nameCtrl.text.trim(),
           age: age,
           gender: _gender!,
           education: _education!,
+          consentVersion: ResearchConsent.version,
+          consentAcceptedAtIso: acceptedAt,
         ),
       );
     } finally {
@@ -144,6 +183,44 @@ class _ParticipantProfileScreenState extends State<ParticipantProfileScreen> {
                     )
                     .toList(),
                 onChanged: (v) => setState(() => _education = v),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(top: 2),
+                    child: Checkbox(
+                      value: _consentAccepted,
+                      onChanged: _submitting
+                          ? null
+                          : (v) =>
+                              setState(() => _consentAccepted = v ?? false),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Li e concordo, de forma livre e informada, com o '
+                          'termo de consentimento e com o tratamento dos meus '
+                          'dados pessoais para as finalidades do estudo aí '
+                          'descritas (incluindo telemetria técnica e dados das '
+                          'tarefas, conforme aplicável).',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton(
+                            onPressed: _submitting ? null : _openConsentTerms,
+                            child: const Text('Ler termos completos'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
               FilledButton(

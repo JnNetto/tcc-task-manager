@@ -36,6 +36,14 @@ class ParticipantStudyConfig {
     if (age == null) return false;
     if (gender == null || gender.toString().isEmpty) return false;
     if (education == null || education.toString().isEmpty) return false;
+    final consentAt = p['consent_accepted_at'];
+    if (consentAt == null || consentAt.toString().trim().isEmpty) {
+      return false;
+    }
+    final consentVer = p['consent_version'];
+    if (consentVer == null || consentVer.toString().trim().isEmpty) {
+      return false;
+    }
     return true;
   }
 
@@ -88,6 +96,8 @@ class ParticipantStudyConfig {
         'age': 30,
         'gender': 'prefer_not',
         'education': 'edu_skip',
+        'consent_version': 'legacy-dev',
+        'consent_accepted_at': '1970-01-01T00:00:00.000Z',
       },
     );
   }

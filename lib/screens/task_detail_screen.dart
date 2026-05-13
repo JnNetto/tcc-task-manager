@@ -118,12 +118,33 @@ class _TaskDetailViewState extends State<_TaskDetailView> {
       updatedAt: DateTime.now(),
     );
 
-    Future<void> action() async {
+    Future<void> persistToggle() async {
       await repo.updateTask(updated);
+    }
+
+    Future<void> applyReminderSideEffects() async {
       if (updated.isCompleted) {
         await NotificationService.cancelForTask(updated.id);
       } else if (updated.reminderAt != null || updated.isRecurring) {
         await NotificationService.scheduleForTask(updated);
+      }
+    }
+
+    Future<void> action() async {
+      await persistToggle();
+      try {
+        await applyReminderSideEffects();
+      } catch (e, st) {
+        debugPrint('Notificacao apos alternar conclusao: $e\n$st');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Estado guardado; o lembrete pode precisar de ajuste nas definicoes.',
+              ),
+            ),
+          );
+        }
       }
     }
 
@@ -132,7 +153,17 @@ class _TaskDetailViewState extends State<_TaskDetailView> {
       if (context.mounted) navigator.pop();
     } catch (e) {
       if (!context.mounted) return;
-      await _handleError(context, operation: 'update', action: action, error: e);
+      await _handleError(
+        context,
+        operation: 'update',
+        action: () async {
+          await persistToggle();
+          try {
+            await applyReminderSideEffects();
+          } catch (_) {}
+        },
+        error: e,
+      );
     }
   }
 
@@ -162,7 +193,11 @@ class _TaskDetailViewState extends State<_TaskDetailView> {
 
     final repo = context.read<TaskProvider>();
     Future<void> action() async {
-      await NotificationService.cancelForTask(task.id);
+      try {
+        await NotificationService.cancelForTask(task.id);
+      } catch (e) {
+        debugPrint('Cancelar notificacao antes de apagar: $e');
+      }
       await repo.deleteTask(task.id);
     }
 

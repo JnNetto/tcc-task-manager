@@ -301,6 +301,11 @@ Future<void> _bootstrapWithParticipantId(String participantId) async {
   await NotificationService.initialize();
 
   runApp(_StudyRoot(session: session, tasksBox: tasksBox));
+  // Android 13+: o pedido de POST_NOTIFICATIONS precisa de manifest + Activity;
+  // após o primeiro frame do ecrã principal o diálogo do sistema costuma aparecer.
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(NotificationService.requestAndroidPostNotificationsPermission());
+  });
 }
 
 class _StudyRoot extends StatelessWidget {

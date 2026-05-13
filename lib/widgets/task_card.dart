@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../domain/models/task.dart';
 import '../domain/models/task_priority.dart';
-import '../domain/models/sync_status.dart';
 
 class TaskCard extends StatelessWidget {
   final Task task;
@@ -80,12 +79,6 @@ class TaskCard extends StatelessWidget {
                   'Criada $relative',
                   style: theme.textTheme.bodySmall,
                 ),
-                if (task.syncStatus != SyncStatus.synced)
-                  Icon(
-                    Icons.sync_problem_rounded,
-                    size: 18,
-                    color: theme.colorScheme.tertiary,
-                  ),
               ],
             ),
           ],
