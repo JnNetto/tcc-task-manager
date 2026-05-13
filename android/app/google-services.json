@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "729124145052",
+    "firebase_url": "https://tcc-task-manager-82e52-default-rtdb.firebaseio.com",
+    "project_id": "tcc-task-manager-82e52",
+    "storage_bucket": "tcc-task-manager-82e52.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:729124145052:android:1c47048d876d34942d6a59",
+        "android_client_info": {
+          "package_name": "br.edu.icev.task_manager_study"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8CxKImtOCZNjBJDVru3i56vJEcmyGHkQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:729124145052:android:a16c49b2d6e9358c2d6a59",
+        "android_client_info": {
+          "package_name": "com.example.tcc_task_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8CxKImtOCZNjBJDVru3i56vJEcmyGHkQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

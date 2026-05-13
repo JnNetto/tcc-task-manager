@@ -1,0 +1,23 @@
+---
+description: Rastreabilidade obrigatoria para trabalho academico
+alwaysApply: true
+---
+
+# Rastreabilidade Academica Obrigatoria
+
+Este repositorio e parte de um trabalho academico. Toda intervencao tecnica deve ser documentada de forma rastreavel.
+
+## Regra operacional
+
+- Sempre registrar mudancas implementadas, bugs identificados, problemas encontrados e correcoes aplicadas.
+- Para cada item, incluir: contexto, causa (ou hipotese), arquivos alterados, decisao tomada, validacao executada e resultado.
+- Ao finalizar qualquer tarefa, informar status objetivo: concluido, parcial ou pendente, com justificativa.
+- Quando houver bloqueio externo (ex.: credenciais, ambiente, arquivo de terceiros), registrar explicitamente o bloqueio e o impacto.
+- Nunca omitir falhas de build, testes ou lint; reportar erro observado e acao corretiva.
+
+## Formato minimo recomendado no relato
+
+- ID/tema da mudanca
+- Data/hora
+- Evidencias tecnicas (comandos, logs relevantes, artefatos gerados)
+- Risco residual e proximo passo
