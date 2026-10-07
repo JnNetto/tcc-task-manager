@@ -43,3 +43,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Saidas geradas pelo script de analise (dados de participantes)
+/analysis/output/
+/analysis/__pycache__/
+*.pyc
+
+# Snapshot privado do RTDB (contem nomes) e documentos do TCC em revisao
+/analysis/data/
+*.docx
+~$*

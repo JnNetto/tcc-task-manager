@@ -1,4 +1,4 @@
-# ESPECIFICAÇÕES TÉCNICAS — v4.1
+# ESPECIFICAÇÕES TÉCNICAS — v4.2
 ## Sistema de Avaliação Empírica de Arquiteturas Offline-First
 
 **Projeto:** Trabalho de Conclusão de Curso
@@ -7,7 +7,7 @@
 **Instituição:** iCEV
 **Curso:** Engenharia de Software
 **Data:** Maio 2026
-**Versão:** 4.1 *(revisão: aplicativo único, arquitetura controlada remotamente, telemetria em nuvem, UI cega ao paradigma)*
+**Versão:** 4.2 *(revisão: alinhado à implementação real — notificações, TCLE, admin in-app, SyncService bidirecional, pull sempre permitido)*
 
 ---
 
@@ -209,15 +209,21 @@ Alvo: **n = 20 participantes** (10 por grupo de ordem). O estudo é caracterizad
 
 ```
 lib/
-├── main.dart                    # Ponto de entrada único
+├── main.dart                    # Ponto de entrada único (splash + bootstrap Firebase)
+├── app.dart                     # MaterialApp principal (após autenticação)
+├── firebase_options.dart        # Gerado por FlutterFire CLI
 ├── config/
-│   ├── app_config.dart          # janelas do NetworkSimulator, URLs
-│   ├── firebase_options.dart
-│   └── app_theme.dart
+│   ├── app_config.dart          # Janelas do NetworkSimulator, parâmetros de degradação
+│   ├── app_theme.dart           # Material 3, light + dark
+│   ├── app_locale.dart          # Locale pt_BR + delegates
+│   └── debug_admin.dart         # Constantes para modo investigador (P000)
 ├── domain/
 │   ├── models/
 │   │   ├── task.dart
-│   │   └── sync_status.dart
+│   │   ├── task_priority.dart
+│   │   ├── sync_status.dart
+│   │   ├── participant_study_config.dart
+│   │   └── profile_questionnaire.dart
 │   └── repositories/
 │       └── task_repository.dart
 ├── data/
@@ -226,32 +232,53 @@ lib/
 │   ├── offline/
 │   │   ├── offline_task_repository.dart
 │   │   ├── sync_service.dart
-│   │   └── task_hive_model.dart
+│   │   ├── task_hive_model.dart (+.g.dart)
+│   │   └── offline_mutation_sync_trigger.dart  # dispara sync após mutação local
 │   ├── experiment/
-│   │   └── experiment_config_repository.dart  # lê modo remoto (sem simulador)
-│   └── hive/
-│       └── (opcional: fila local só se offline-first na telemetria — evitar; preferir envio direto)
+│   │   ├── participant_remote_config_service.dart  # lê/escreve RTDB (sem simulador)
+│   │   ├── admin_rtdb_bootstrap.dart              # seed do RTDB em debug
+│   │   ├── admin_study_remote_service.dart        # operações do painel admin
+│   │   ├── cross_architecture_task_bridge.dart    # flush Hive→Firestore ao trocar modo
+│   │   └── participant_phase_day_tally.dart       # contagem de dias por fase
+│   ├── hive/
+│   │   └── telemetry_event_model.dart (+.g.dart)
+│   ├── study_repository_factory.dart              # fábrica de repos por arquitetura
+│   └── participant_impression_service.dart        # impressões qualitativas
 ├── services/
 │   ├── network_simulator.dart
-│   ├── telemetry_service.dart   # grava no Realtime Database, fora do simulador
-│   └── export_service.dart      # opcional / legado
-├── admin/                       # opcional: mesmo repo, flavor admin — ou projeto separado
-│   └── ...
+│   ├── telemetry_service.dart   # Hive local + push RTDB, fora do simulador
+│   ├── notification_service.dart # lembretes de tarefas + engajamento
+│   └── export_service.dart      # exportação JSON local (opcional)
 ├── providers/
-│   ├── task_provider.dart
-│   ├── connectivity_provider.dart
-│   └── experiment_provider.dart
+│   ├── study_session_controller.dart  # estado remoto + polling + lifecycle
+│   └── task_provider.dart             # stream de tarefas + reordenação manual
 ├── screens/
-│   ├── onboarding_code_screen.dart
-│   ├── onboarding_profile_screen.dart
+│   ├── participant_onboarding_screen.dart  # entrada de código
+│   ├── participant_profile_screen.dart    # questionário + TCLE
 │   ├── task_list_screen.dart
 │   ├── task_form_screen.dart
 │   ├── task_detail_screen.dart
-│   └── settings_screen.dart
-└── widgets/
-    ├── task_card.dart
-    └── common/
+│   ├── settings_screen.dart
+│   └── admin/
+│       ├── admin_participants_screen.dart
+│       ├── admin_participant_detail_screen.dart
+│       ├── admin_create_participant_screen.dart
+│       └── admin_batch_import_screen.dart
+├── widgets/
+│   ├── task_card.dart
+│   ├── sync_status_indicator.dart
+│   ├── participant_impression_sheet.dart
+│   └── common/
+│       ├── loading_indicator.dart
+│       └── error_dialog.dart
+├── utils/
+│   ├── participant_loader.dart         # SharedPreferences: ID + studyStartDate
+│   ├── participant_name_match.dart     # validação nome vs cadastro admin
+│   └── task_list_error_messages.dart   # mensagens genéricas (UI cega)
+└── legal/
+    └── research_consent.dart           # texto do TCLE exibido no onboarding
 ```
+
 
 ---
 
@@ -260,8 +287,8 @@ lib/
 ### 4.1 Frontend
 
 ```yaml
-Framework:   Flutter 3.24+
-Linguagem:   Dart 3.5+
+Framework:   Flutter 3.29+ (canal stable)
+Linguagem:   Dart 3.11.5+
 SDK mínimo:  Android 21 (Android 5.0)
 SDK alvo:    Android 34 (Android 14)
 ```
@@ -281,18 +308,24 @@ Regra:  Telemetria e leitura de arquitetura ativa não passam pelo NetworkSimula
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   firebase_core: ^3.0.0
+  firebase_database: ^11.1.2
   cloud_firestore: ^5.0.0
-  firebase_database: ^11.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.2
   provider: ^6.1.2
   connectivity_plus: ^6.0.0
   uuid: ^4.4.0
-  intl: ^0.19.0
+  intl: ^0.20.2
   device_info_plus: ^10.0.0
-  share_plus: ^9.0.0
+  share_plus: ^12.0.2
+  flutter_local_notifications: ^17.2.2
+  shared_preferences: ^2.3.2
+  timezone: ^0.9.4
+  flutter_timezone: ^5.0.2
 
 dev_dependencies:
   flutter_test:
@@ -300,7 +333,9 @@ dev_dependencies:
   hive_generator: ^2.0.1
   build_runner: ^2.4.8
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
 ```
+
 
 ---
 
@@ -327,36 +362,55 @@ O pesquisador dispõe de mecanismo de gestão (app administrativo separado, scri
 - **Alterar a arquitetura** associada a um participante (ou em massa) a qualquer momento; o app cliente passa a enxergar a mudança na **próxima sincronização de configuração** (polling curto ou push, ver implementação).
 - **Encerrar o experimento** para um participante ou globalmente: estados como `app_disabled` (app exibe tela de estudo encerrado e não permite uso) e/ou `telemetry_disabled` (app continua ou não conforme protocolo, porém **nenhum** evento de telemetria é gravado).
 
-### 5.4 Modelo de dados sugerido (Firebase)
-
-Os caminhos abaixo são sugestivos; podem ser normalizados em uma única árvore do **Realtime Database** (JSON nativo) ou espelhados no Firestore.
+### 5.4 Modelo de dados implementado (Firebase Realtime Database)
 
 ```text
-study_config/
+participants/{participantCode}/
+  display_name: string                           # nome atribuído pelo pesquisador
+  architecture: "online-first" | "offline-first"
+  study_started_at: ISO8601                      # preenchido automaticamente na 1ª abertura
+  days_online_phase: number                      # calculado pelo client via architecture_timeline
+  days_offline_phase: number                     # idem
+  last_phase_tally_utc_date: "YYYY-MM-DD"        # último dia civil contabilizado
+  app_enabled: bool
+  telemetry_enabled: bool
+  profile_questionnaire:
+    name: string
+    age: number
+    gender: string
+    education: string
+    consent_version: string                      # versão do TCLE aceite
+    consent_accepted_at: ISO8601                 # momento UTC da aceitação
+  architecture_timeline/
+    {pushId}/
+      changed_at: ISO8601
+      architecture: "online-first" | "offline-first"
+
+study_config/                                    # (opcional — parâmetros globais)
   total_study_days: 30
   days_per_architecture_default: 15
   washout_days: 0..7
   global_app_enabled: bool
   global_telemetry_enabled: bool
-
-participants/{participantCode}/
-  display_name: string
-  architecture: "online-first" | "offline-first"
-  study_started_at: ISO8601
-  days_online_phase: number   # derivado ou atualizado pelo cliente/servidor
-  days_offline_phase: number
-  app_enabled: bool
-  telemetry_enabled: bool
-  profile_questionnaire: { name, age, gender, education }  # preenchido uma vez no app
 ```
+
+O campo `architecture_timeline` mantém o histórico de trocas de modo, permitindo calcular dias acumulados por fase (`days_online_phase`, `days_offline_phase`) via `participant_phase_day_tally.dart`. O cálculo é executado pelo client a cada abertura do app.
+
+A verificação `profileComplete` exige que todos os campos do questionário estejam preenchidos **e** que `consent_version` não seja `"admin-provisioned"` (perfil semeado pelo admin sem consentimento real).
 
 Regras de segurança do Firebase devem impedir que participantes alterem campos administrativos (`architecture`, flags de encerramento); apenas o cliente autenticado do pesquisador ou Cloud Functions podem escrever nesses nós.
 
 ### 5.5 Sincronização da arquitetura no cliente
 
-- Após o login por código, o app armazena localmente uma **cópia em cache** do último modo autorizado e o timestamp da última leitura.
-- Antes de cada operação de tarefas (ou em intervalo curto configurável, ex.: a cada abertura do app e a cada N minutos em foreground), o cliente **atualiza** essa cópia com o servidor **sem** simulador.
-- Se o modo mudar entre duas operações, o runtime deve **trocar** a implementação ativa de `TaskRepository` (e iniciar/parar `SyncService` conforme necessário) de forma segura (ex.: após concluir operação em curso ou exibir mensagem neutra de “sincronizando…” sem revelar o paradigma).
+O `StudySessionController` (ChangeNotifier + WidgetsBindingObserver) gerencia o ciclo de vida:
+
+- **Polling periódico** a cada 30 segundos (configurável via `pollInterval`).
+- **Listener RTDB** (`onValue`) no nó `participants/{code}` — qualquer escrita dispara refresh imediato.
+- **Lifecycle-aware** — ao retomar o app (`AppLifecycleState.resumed`) executa refresh imediato.
+- Ao detectar **troca de `architecture`**, dispara callback `onArchitectureTransition`:
+  - Se a transição for offline-first → online-first, o `CrossArchitectureTaskBridge` faz flush dos dados pendentes do Hive → Firestore (sem NetworkSimulator), garantindo continuidade.
+- O `_StudyRoot` (Consumer) reconstrói a árvore de providers com um novo `ValueKey` contendo o modo, o que recria `TaskProvider`, `SyncService`, etc.
+
 
 ---
 
@@ -491,8 +545,8 @@ Escrita:                Sempre no Hive — instantânea
 Sincronização:          SyncService bidirecional em background
                         Push: Hive → Firestore (dados pendentes locais)
                         Pull: Firestore → Hive (dados mais recentes do servidor)
-NetworkSimulator:       Atua no SyncService — não bloqueia operações locais
-Sem conectividade sim.: Operações locais funcionam; sync fica pendente
+NetworkSimulator:       Atua apenas no PUSH do SyncService — não bloqueia operações locais
+Sem conectividade sim.: Operações locais funcionam; push fica pendente; pull tenta normalmente
 Resolução de conflitos: Last-Write-Wins por updatedAt
 ```
 
@@ -603,7 +657,7 @@ _doSync()
             (apenas o que mudou desde lastPullAt)
 ```
 
-O `lastPullAt` é um timestamp persistido em `SharedPreferences`. A cada pull, apenas documentos com `updatedAt > lastPullAt` são baixados, evitando downloads desnecessários. Na primeira abertura (Hive vazio), `lastPullAt` é nulo e todos os documentos são baixados.
+O pull busca sempre a lista completa (sem `lastPullAt`). A cada pull, apenas documentos com `updatedAt > lastPullAt` são baixados, evitando downloads desnecessários. Na primeira abertura (Hive vazio), `lastPullAt` é nulo e todos os documentos são baixados.
 
 ```dart
 // lib/data/offline/sync_service.dart
@@ -637,9 +691,9 @@ class SyncService {
       .collection('participants').doc(participantId).collection('tasks');
 
   void start() {
-    // Sincroniza periodicamente a cada 5 minutos
+    // Sincroniza periodicamente a cada 15 segundos + após cada mutação local
     _periodicTimer = Timer.periodic(
-        const Duration(minutes: 5), (_) => _syncIfAllowed());
+        const Duration(seconds: 15), (_) => _syncIfAllowed());
     // Tenta imediatamente ao iniciar — pull inicial se Hive estiver vazio
     _syncIfAllowed();
   }
@@ -648,7 +702,7 @@ class SyncService {
     if (_isSyncing) return;
 
     final allowed = await NetworkSimulator.instance
-        .checkSyncAllowed('sync_service');
+        .checkPushToRemoteAllowed('sync_service_push');
 
     if (!allowed) {
       TelemetryService.instance.logSyncBlocked(reason: 'network_simulator');
@@ -792,7 +846,7 @@ APP ABRE (primeira vez / após reinstalação)
   ↓
 Hive vazio → lastPullAt = null
   ↓
-NetworkSimulator.checkSyncAllowed()
+NetworkSimulator.checkPushToRemoteAllowed()
   ├── NÃO (degradação ativa) → UI mostra dados locais (vazio)
   │   → aguarda próximo ciclo de 5 min
   └── SIM → pull completo do Firestore
@@ -828,7 +882,7 @@ UI responde instantaneamente
 O `NetworkSimulator` é **simétrico** entre participantes: **mesmo** padrão recorrente configurado. A diferença está em **como** cada **modo de arquitetura ativo** o utiliza:
 
 - **Modo Online-First:** chama `intercept()` em cada operação CRUD — pode bloquear ou adicionar latência à operação.
-- **Modo Offline-First (`SyncService`):** chama `checkSyncAllowed()` antes de cada ciclo de sync — pode impedir a sincronização, mas nunca bloqueia operações locais.
+- **Modo Offline-First (`SyncService`):** chama `checkPushToRemoteAllowed()` antes do push — pode impedir o envio ao Firestore, mas nunca bloqueia operações locais nem o pull (Firestore→Hive).
 
 ### 8.2 Estratégia de Degradação Dupla
 
@@ -849,7 +903,7 @@ As duas camadas são configuradas em `app_config.dart` e são **as mesmas** para
 
 class AppConfig {
   // Duração de fases pode vir do RTDB (study_config); constante abaixo = fallback
-  static const int periodDurationDays = 0; // 0 = usar apenas config remota
+  static const int periodDurationDays = 30; // alinhado ao protocolo (15+15 referência)
 
   // ── CAMADA 1: Janelas fixas por horário ────────────────────────────────
   // Múltiplas janelas ao longo do dia para cobrir diferentes rotinas
@@ -1029,11 +1083,11 @@ class NetworkSimulator {
     }
   }
 
-  // ── Método público: usado no modo Offline-First (SyncService) ─────────────
-  Future<bool> checkSyncAllowed(String context) async {
+  // ── Método público: usado no modo Offline-First (apenas PUSH no SyncService)
+  Future<bool> checkPushToRemoteAllowed(String context) async {
     if (!isDegraded) return true;
     TelemetryService.instance.logSyncBlocked(
-        reason: degradationCause.name);
+        reason: 'push_blocked:${degradationCause.name}:$context');
     return false;
   }
 
@@ -1132,9 +1186,9 @@ Cada gravação é um nó filho sob `telemetry/{participantCode}/{pushId}` (ou a
 
 > O campo `dayOfStudy` continua essencial para análises longitudinais (ex.: semana 1 vs. semana 2 dentro de cada fase de 15 dias). Pode ser calculado a partir de `study_started_at` armazenado no perfil do participante.
 
-### 9.3 Serviço de Telemetria (persistência remota)
+### 9.3 Serviço de Telemetria (persistência dual: Hive + RTDB)
 
-O `TelemetryService` **não** usa Hive como fonte primária. Opcionalmente mantém **fila local mínima** apenas para reenvio se o app for fechado durante uma escrita pendente — mas o caminho feliz é `push` imediato ao RTDB. Ilustração do núcleo de `logEvent`:
+O `TelemetryService` persiste eventos em **duas camadas**: (1) Hive local (`TelemetryEventModel`, typeId 10) como registro completo e backup, e (2) push imediato ao Firebase Realtime Database. O caminho feliz é push direto ao RTDB; o Hive garante que nenhum evento é perdido. A resolução de `architecture` e `telemetryEnabled` é feita internamente via callbacks registrados em `init()`. Ilustração do núcleo de `logEvent`:
 
 ```dart
 // lib/services/telemetry_service.dart (trecho conceitual)
@@ -1311,8 +1365,17 @@ class Task {
   final TaskPriority priority;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? sortOrder;
   final SyncStatus syncStatus;
   final DateTime? pendingSince;
+
+  // Campos de notificação/lembretes
+  final DateTime? reminderAt;
+  final bool isRecurring;
+  final List<int> recurringHours;
+  final List<int> recurringMinutes;
+  final List<int> recurringWeekdays; // 1..7 (DateTime.monday..sunday)
+  final DateTime? reminderEndDate;
 
   // copyWith, toFirestore, fromFirestore omitidos por brevidade
 }
@@ -1326,8 +1389,10 @@ abstract class TaskRepository {
   Future<void> createTask(Task task);
   Future<void> updateTask(Task task);
   Future<void> deleteTask(String taskId);
+  Future<Task?> getTaskById(String taskId);
 }
 ```
+
 
 ---
 
@@ -1729,7 +1794,7 @@ NetworkSimulator:    Simula degradação de rede no pipeline de **tarefas** do m
 SimulationWindow:    Janela de tempo com degradação ativa (hora + duração)
 DegradationMode:     Como a degradação se manifesta (block / latency / ambos)
 intercept():         Usado no modo online-first em operações CRUD ao Firestore
-checkSyncAllowed():  Usado no modo offline-first no SyncService
+checkPushToRemoteAllowed(): Usado no modo offline-first (apenas push no SyncService; pull não usa)
 dayOfStudy:          Dia desde o início da participação no estudo (campo em cada evento)
 architecture:        Modo de dados no instante do evento de telemetria
 networkDegraded:     Flag: simulador ativo para tarefas quando o evento ocorreu
@@ -1762,7 +1827,7 @@ Análise:
   - [ ] Template de sus_scores.csv (merge por participant_id e fase / architecture)
 
 Documentação:
-  - [ ] Este documento técnico (v4.1)
+  - [ ] Este documento técnico (v4.2)
   - [ ] README do repositório
 ```
 
@@ -1770,4 +1835,4 @@ Documentação:
 
 **FIM DO DOCUMENTO**
 
-*Versão 4.1 — Aplicativo único, controle remoto de arquitetura, telemetria em RTDB, UI cega (maio 2026)*
+*Versão 4.2 — Aplicativo único, controle remoto de arquitetura, telemetria dual (Hive+RTDB), UI cega, notificações, TCLE in-app (maio 2026)*

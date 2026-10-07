@@ -22,7 +22,7 @@ Em **build debug**, o app de investigador usa `P000` (reservado); não use `P000
 | Campo | Tipo | Descrição |
 |-------|------|-----------|
 | `architecture` | string | `online-first` ou `offline-first` |
-| `app_enabled` | bool | Se `false`, o app mostra ecrã de estudo encerrado |
+| `app_enabled` | bool | Se `false`, o app mostra ecrã de estudo encerrado. O painel investigador pode definir este campo em massa para todos os participantes (exceto `P000`). |
 | `telemetry_enabled` | bool | Se `false`, não grava telemetria |
 | `display_name` | string | Nome ou pseudónimo (preenchido pelo questionário ou investigador) |
 | `study_started_at` | string (ISO8601) | Opcional; pode ser definido no primeiro perfil |
@@ -40,6 +40,22 @@ Em **build debug**, o app de investigador usa `P000` (reservado); não use `P000
 | `education` | string |
 
 O participante **só** pode escrever `profile_questionnaire` (e campos de perfil acordados). Campos `architecture`, `app_enabled`, `telemetry_enabled` devem ser escritos apenas pelo investigador (regras ou Cloud Function).
+
+#### `subjective_questionnaires/{T1|T2}`
+
+Respostas dos formulários HTML externos (`questionario_T1.html`, `questionario_T2.html`), importadas pelo painel investigador.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `period` | string | `T1` (primeiros 15 dias) ou `T2` (últimos 15 dias) |
+| `participant_id` | string | Ex.: `P007` |
+| `participant_display_name` | string | Nome do cadastro RTDB |
+| `assigned_architecture` | string | Arquitetura atribuída no cadastro (primeira fase) |
+| `architecture_during_period` | string | Arquitetura vigente nos 15 dias do questionário |
+| `submitted_at` | string (ISO8601) | Data informada pelo participante no JSON |
+| `imported_at` | string (ISO8601) | Momento da importação pelo investigador |
+| `schema_version` | string | Versão do esquema do questionário (ex.: `1.0`) |
+| `responses` | map | Payload completo exportado pelo HTML (SUS, confiabilidade, comparativo T2, etc.) |
 
 ### `telemetry/{participantId}/{pushId}`
 

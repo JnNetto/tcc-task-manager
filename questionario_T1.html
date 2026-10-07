@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionário · Primeiro período</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Newsreader:ital,opsz,wght@0,6..72,400;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c1a17; --paper:#f6f2ea; --card:#fffdf8; --line:#e0d8c8;
+  --accent:#7a4a2b; --accent-soft:#b07d52; --rule:#c9bda6;
+  --rev:#a23b2d; --ok:#3f6f4f; --shadow:rgba(60,45,25,.10);
+  --sel:#7a4a2b; --sel-ring:rgba(122,74,43,.16);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; overflow-x:hidden}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif; line-height:1.55;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  background-image:radial-gradient(circle at 12% 8%,rgba(176,125,82,.05),transparent 40%),
+                   radial-gradient(circle at 88% 92%,rgba(122,74,43,.05),transparent 40%);
+}
+.wrap{max-width:720px; margin:0 auto; padding:0 16px 120px; overflow-x:hidden}
+
+header{padding:46px 0 26px}
+.kicker{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-soft);font-weight:600;margin-bottom:10px}
+h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(26px,6vw,42px);line-height:1.06;margin:0 0 10px;letter-spacing:-.01em}
+.sub{font-family:'Newsreader',serif;font-style:italic;font-size:clamp(15px,3vw,18px);color:#6b6052;max-width:52ch;margin:0}
+.period-tag{display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:6px 14px;border:1.5px solid var(--accent);border-radius:100px;font-size:12.5px;font-weight:600;letter-spacing:.04em;color:var(--accent);background:rgba(122,74,43,.04)}
+.period-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.rule{height:1px;background:linear-gradient(90deg,var(--rule),transparent);margin:26px 0 4px;border:0}
+
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 18px;margin:18px 0;box-shadow:0 1px 0 var(--shadow),0 12px 24px -20px var(--shadow);overflow:hidden}
+.sec-head{display:flex;align-items:center;gap:11px;margin:0 0 4px}
+.sec-num{font-family:'Fraunces',serif;font-size:12px;font-weight:600;color:#fff;background:var(--accent);width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+h2{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin:0;letter-spacing:-.01em}
+h3.part-title{font-family:'Fraunces',serif;font-size:26px;font-weight:600;margin:32px 0 4px;letter-spacing:-.01em;color:var(--accent)}
+.sec-desc{font-family:'Newsreader',serif;font-size:15.5px;color:#6b6052;margin:8px 0 16px;font-style:italic}
+.legend{font-size:12px;color:#8a7d6b;background:rgba(201,189,166,.16);border-radius:8px;padding:8px 11px;margin:0 0 16px;line-height:1.5}
+.legend b{color:var(--accent);font-weight:600}
+h4.dim{font-family:'IBM Plex Sans';font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--accent-soft);font-weight:600;margin:20px 0 7px;padding-bottom:5px;border-bottom:1px dashed var(--rule)}
+h4.dim:first-of-type{margin-top:2px}
+
+/* Items */
+.item{padding:14px 0;border-bottom:1px solid #efe9dc}
+.item:last-child{border-bottom:0}
+.item-text{margin:0 0 12px;font-size:15px;line-height:1.5}
+.rev{color:var(--rev);font-weight:600;font-size:11.5px;vertical-align:super;margin-left:2px}
+
+/* Likert scale — KEY FIX: no aspect-ratio, fixed small height, prevent overflow */
+.scale{display:grid;gap:5px;width:100%;min-width:0}
+.scale-5{grid-template-columns:repeat(5,1fr)}
+.scale-7{grid-template-columns:repeat(7,1fr)}
+.opt{position:relative;cursor:pointer;min-width:0}
+.opt input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0}
+.dot{
+  display:flex;align-items:center;justify-content:center;
+  width:100%;height:40px;
+  border:1.5px solid var(--line);border-radius:9px;
+  font-size:13.5px;font-weight:500;color:#9a8e7c;background:#fffdf8;
+  transition:all .13s ease;user-select:none;
+  white-space:nowrap;overflow:hidden;
+}
+.opt:hover .dot{border-color:var(--accent-soft);color:var(--accent)}
+.opt input:checked + .dot{background:var(--sel);border-color:var(--sel);color:#fff;box-shadow:0 0 0 3px var(--sel-ring)}
+.opt input:focus-visible + .dot{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Comparative bipolar labels */
+.scale-ends-wrap{display:flex;justify-content:space-between;margin-bottom:5px}
+.end-label{font-size:11px;color:#9a8e7c;font-style:italic;line-height:1}
+.scale-mid-label{text-align:center;font-size:11px;color:#9a8e7c;margin-top:4px;font-style:italic}
+
+/* Fields */
+.field{margin:14px 0}
+.field label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;line-height:1.45}
+.field .hint{font-weight:400;color:#8a7d6b;font-size:12.5px}
+input[type=text],input[type=number],textarea{
+  width:100%;font-family:inherit;font-size:15px;color:var(--ink);
+  background:#fffdf8;border:1.5px solid var(--line);border-radius:9px;
+  padding:10px 12px;transition:border-color .13s;
+}
+input[type=text]:focus,input[type=number]:focus,textarea:focus{
+  outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--sel-ring);
+}
+textarea{resize:vertical;min-height:60px}
+
+/* Choice (big radio) */
+.choice{display:flex;flex-direction:column;gap:8px;margin-top:7px}
+.choice label{
+  display:flex;align-items:center;gap:10px;padding:11px 13px;
+  border:1.5px solid var(--line);border-radius:10px;cursor:pointer;
+  font-size:14.5px;transition:all .13s;background:#fffdf8;
+}
+.choice label:hover{border-color:var(--accent-soft)}
+.choice input{accent-color:var(--accent);width:17px;height:17px;flex:0 0 auto}
+.choice input:checked ~ span{font-weight:600;color:var(--accent)}
+.choice label:has(input:checked){border-color:var(--accent);background:rgba(122,74,43,.04)}
+
+/* Progress */
+.progress-wrap{position:sticky;top:0;z-index:40;background:var(--paper);margin:0 -16px}
+.progress{height:3px;background:transparent}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent-soft),var(--accent));transition:width .22s ease;border-radius:0 3px 3px 0}
+.counter{font-size:11.5px;color:#8a7d6b;text-align:right;padding:5px 16px 0}
+.counter b{color:var(--accent);font-weight:600}
+
+/* Submit */
+.actions{margin-top:26px;display:flex;flex-direction:column;gap:10px}
+.btn{font-family:'IBM Plex Sans';font-size:15.5px;font-weight:600;border:0;border-radius:11px;padding:15px 20px;cursor:pointer;transition:transform .11s,box-shadow .11s,background .13s;width:100%}
+.btn-primary{background:var(--accent);color:#fff;box-shadow:0 8px 20px -10px rgba(122,74,43,.6)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 24px -10px rgba(122,74,43,.6)}
+.btn-primary:active{transform:translateY(0)}
+.btn-primary:disabled{background:#c9bda6;box-shadow:none;cursor:not-allowed;transform:none}
+.note{font-size:12.5px;color:#8a7d6b;text-align:center;font-style:italic;font-family:'Newsreader',serif;margin:0}
+
+.err-summary{display:none;background:rgba(162,59,45,.07);border:1.5px solid var(--rev);border-radius:10px;padding:13px 15px;margin-top:14px;font-size:13.5px;color:var(--rev)}
+.err-summary.show{display:block}
+.item.missing .dot{border-color:var(--rev)}
+.item.missing .item-text{color:var(--rev)}
+
+/* Done */
+.done{display:none;text-align:center;padding:50px 16px}
+.done.show{display:block;animation:fade .4s ease}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.check{width:62px;height:62px;border-radius:50%;background:var(--ok);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 18px}
+.done h2{font-family:'Fraunces',serif;font-size:26px;margin-bottom:8px}
+.done p{color:#6b6052;font-size:15px;max-width:44ch;margin:0 auto 6px;line-height:1.5}
+.filecode{font-family:'IBM Plex Sans';font-size:12.5px;background:rgba(201,189,166,.2);border-radius:7px;padding:7px 11px;display:inline-block;margin-top:12px;color:var(--accent);font-weight:600;word-break:break-all}
+
+@media(max-width:400px){
+  .dot{height:36px;font-size:12px;border-radius:7px}
+  .scale{gap:4px}
+  .item-text{font-size:14.5px}
+}
+</style>
+</head>
+<body>
+<div class="progress-wrap">
+  <div class="progress"><div class="progress-bar" id="bar"></div></div>
+  <div class="counter"><b id="answered">0</b> de <span id="total">0</span></div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">iCEV · Engenharia de Software · Pesquisa de campo</div>
+    <h1>Sua experiência com o aplicativo</h1>
+    <p class="sub">Responda com base no que você realmente viveu nas últimas duas semanas. Não há respostas certas ou erradas.</p>
+    <span class="period-tag">Primeiro período (T1)</span>
+    <hr class="rule">
+  </header>
+
+  <form id="form" novalidate>
+
+    <!-- BLOCO 0 -->
+    <section>
+      <div class="sec-head"><span class="sec-num">0</span><h2>Identificação e uso</h2></div>
+      <p class="sec-desc">Comece com seu código de participante e um resumo de quanto usou o aplicativo.</p>
+      <div class="field">
+        <label for="pid">Código do participante <span class="hint">(informado pelo pesquisador)</span></label>
+        <input type="text" id="pid" name="participant_id" placeholder="Ex.: P007" required autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="intensity">Intensidade de uso <span class="hint">(0 = nenhuma vez · 10 = todos os dias intensamente)</span></label>
+        <input type="number" id="intensity" name="use_intensity" min="0" max="10" step="1" placeholder="0 a 10" required>
+      </div>
+      <div class="field">
+        <label for="days">Em quantos dos últimos 15 dias você abriu o aplicativo? <span class="hint">(0 a 15)</span></label>
+        <input type="number" id="days" name="days_used" min="0" max="15" step="1" placeholder="0 a 15" required>
+      </div>
+      <div class="field">
+        <label for="tasks">Aproximadamente quantas tarefas você criou, editou ou concluiu? <span class="hint">(número aproximado)</span></label>
+        <input type="number" id="tasks" name="tasks_count" min="0" step="1" placeholder="Ex.: 25" required>
+      </div>
+    </section>
+
+    <!-- BLOCO 1 - SUS -->
+    <section>
+      <div class="sec-head"><span class="sec-num">1</span><h2>Facilidade de uso</h2></div>
+      <p class="sec-desc">As dez afirmações a seguir avaliam a usabilidade geral do aplicativo.</p>
+      <div class="legend">Escala de <b>1</b> a <b>5</b> &nbsp;·&nbsp; 1 = Discordo totalmente &nbsp;·&nbsp; 3 = Neutro &nbsp;·&nbsp; 5 = Concordo totalmente</div>
+      <div class="item" data-q="sus1">
+    <p class="item-text">Eu acho que gostaria de usar esse sistema com frequência. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus1" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus1" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus1" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus1" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus1" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus2">
+    <p class="item-text">Eu achei esse sistema desnecessariamente complexo. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus2" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus2" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus2" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus2" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus2" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus3">
+    <p class="item-text">Eu achei esse sistema fácil de usar. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus3" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus3" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus3" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus3" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus3" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus4">
+    <p class="item-text">Eu achei que precisaria de ajuda de uma pessoa técnica para conseguir usar esse sistema. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus4" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus4" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus4" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus4" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus4" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus5">
+    <p class="item-text">Eu achei que as várias funções desse sistema estavam bem integradas. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus5" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus5" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus5" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus5" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus5" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus6">
+    <p class="item-text">Eu acho que o sistema apresenta muita inconsistência. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus6" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus6" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus6" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus6" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus6" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus7">
+    <p class="item-text">Eu imagino que a maioria das pessoas aprenderia a usar esse sistema rapidamente. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus7" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus7" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus7" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus7" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus7" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus8">
+    <p class="item-text">Eu achei esse sistema muito difícil de usar. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus8" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus8" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus8" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus8" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus8" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus9">
+    <p class="item-text">Eu me senti muito seguro(a) usando esse sistema. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus9" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus9" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus9" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus9" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus9" value="5" required><span class="dot">5</span></label></div>
+  </div><div class="item" data-q="sus10">
+    <p class="item-text">Eu precisei aprender muitas coisas antes de conseguir usar esse sistema. </p>
+    <div class="scale scale-5"><label class="opt"><input type="radio" name="sus10" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="sus10" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="sus10" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="sus10" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="sus10" value="5" required><span class="dot">5</span></label></div>
+  </div>
+    </section>
+
+    <!-- BLOCO 2A -->
+    <section>
+      <div class="sec-head"><span class="sec-num">2</span><h2>Estabilidade e funcionamento</h2></div>
+      <p class="sec-desc">Falhas, disponibilidade e recuperação do aplicativo. Itens <span class="rev">(R)</span> têm sentido inverso — leia com atenção.</p>
+      <div class="legend">Escala de <b>1</b> a <b>7</b> &nbsp;·&nbsp; 1 = Discordo totalmente &nbsp;·&nbsp; 4 = Neutro &nbsp;·&nbsp; 7 = Concordo totalmente</div>
+      <h4 class="dim">Estabilidade</h4><div class="item" data-q="tf1">
+    <p class="item-text">O aplicativo funcionou de forma estável durante as duas semanas. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf1" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf1" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf1" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf1" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf1" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf1" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf1" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="tf2">
+    <p class="item-text">Encontrei erros ou comportamentos inesperados no aplicativo. <span class="rev" title="Item de sentido inverso">(R)</span></p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf2" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf2" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf2" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf2" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf2" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf2" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf2" value="7" required><span class="dot">7</span></label></div>
+  </div><h4 class="dim">Disponibilidade</h4><div class="item" data-q="tf3">
+    <p class="item-text">Sempre que precisei usar o aplicativo, ele estava disponível. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf3" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf3" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf3" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf3" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf3" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf3" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf3" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="tf4">
+    <p class="item-text">Houve momentos em que não consegui acessar minhas tarefas quando precisei. <span class="rev" title="Item de sentido inverso">(R)</span></p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf4" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf4" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf4" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf4" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf4" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf4" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf4" value="7" required><span class="dot">7</span></label></div>
+  </div><h4 class="dim">Tolerância a falhas</h4><div class="item" data-q="tf5">
+    <p class="item-text">Quando algo deu errado (rede ruim, app fechou), o aplicativo continuou funcionando ou se recuperou de forma controlada. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf5" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf5" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf5" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf5" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf5" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf5" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf5" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="tf6">
+    <p class="item-text">Pequenos problemas se transformaram em falhas grandes que me impediram de trabalhar. <span class="rev" title="Item de sentido inverso">(R)</span></p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf6" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf6" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf6" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf6" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf6" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf6" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf6" value="7" required><span class="dot">7</span></label></div>
+  </div><h4 class="dim">Recuperabilidade</h4><div class="item" data-q="tf7">
+    <p class="item-text">Após qualquer interrupção, encontrei minhas tarefas íntegras e atualizadas. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf7" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf7" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf7" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf7" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf7" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf7" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf7" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="tf8">
+    <p class="item-text">Perdi informações ou tive que refazer trabalho por causa do aplicativo. <span class="rev" title="Item de sentido inverso">(R)</span></p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf8" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf8" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf8" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf8" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf8" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf8" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf8" value="7" required><span class="dot">7</span></label></div>
+  </div><h4 class="dim">Consistência</h4><div class="item" data-q="tf9">
+    <p class="item-text">As informações que vejo no aplicativo são consistentes entre diferentes telas e momentos. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="tf9" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="tf9" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="tf9" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="tf9" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="tf9" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="tf9" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="tf9" value="7" required><span class="dot">7</span></label></div>
+  </div>
+    </section>
+
+    <!-- BLOCO 2B -->
+    <section>
+      <div class="sec-head"><span class="sec-num">3</span><h2>Confiança no aplicativo</h2></div>
+      <p class="sec-desc">Sua percepção de que o aplicativo funcionará quando você precisar dele.</p>
+      <div class="legend">Escala de <b>1</b> a <b>7</b> &nbsp;·&nbsp; 1 = Discordo totalmente &nbsp;·&nbsp; 4 = Neutro &nbsp;·&nbsp; 7 = Concordo totalmente</div>
+      <div class="item" data-q="cs1">
+    <p class="item-text">O aplicativo tem os recursos necessários para que eu gerencie minhas tarefas adequadamente. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs1" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs1" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs1" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs1" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs1" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs1" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs1" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs2">
+    <p class="item-text">O aplicativo é capaz de fazer aquilo de que eu preciso. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs2" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs2" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs2" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs2" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs2" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs2" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs2" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs3">
+    <p class="item-text">O aplicativo é muito confiável. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs3" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs3" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs3" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs3" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs3" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs3" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs3" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs4">
+    <p class="item-text">O aplicativo falha comigo em momentos importantes. <span class="rev" title="Item de sentido inverso">(R)</span></p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs4" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs4" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs4" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs4" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs4" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs4" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs4" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs5">
+    <p class="item-text">Eu posso contar com o aplicativo para funcionar adequadamente. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs5" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs5" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs5" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs5" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs5" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs5" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs5" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs6">
+    <p class="item-text">O aplicativo me dá indicações claras sobre seu estado (salvo, sincronizando, pendente). </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs6" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs6" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs6" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs6" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs6" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs6" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs6" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs7">
+    <p class="item-text">Considero esse aplicativo competente para o propósito a que se destina. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs7" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs7" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs7" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs7" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs7" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs7" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs7" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs8">
+    <p class="item-text">O comportamento do aplicativo é previsível para mim. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs8" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs8" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs8" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs8" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs8" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs8" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs8" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs9">
+    <p class="item-text">Sinto-me confortável em depender desse aplicativo para tarefas importantes. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs9" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs9" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs9" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs9" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs9" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs9" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs9" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="cs10">
+    <p class="item-text">Eu recomendaria esse aplicativo para alguém que precisa gerenciar suas tarefas. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="cs10" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="cs10" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="cs10" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="cs10" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="cs10" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="cs10" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="cs10" value="7" required><span class="dot">7</span></label></div>
+  </div>
+    </section>
+
+    <!-- BLOCO 3 -->
+    <section>
+      <div class="sec-head"><span class="sec-num">4</span><h2>Situações do dia a dia</h2></div>
+      <p class="sec-desc">Pense em momentos específicos das últimas duas semanas.</p>
+      <div class="legend">Escala de <b>1</b> a <b>7</b> &nbsp;·&nbsp; 1 = Discordo totalmente &nbsp;·&nbsp; 4 = Neutro &nbsp;·&nbsp; 7 = Concordo totalmente</div>
+      <div class="item" data-q="ctx1">
+    <p class="item-text">Em situações de internet ruim ou ausente (ônibus, elevador, áreas sem sinal), consegui usar o aplicativo sem frustração. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="ctx1" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="ctx1" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="ctx1" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="ctx1" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="ctx1" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="ctx1" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="ctx1" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="ctx2">
+    <p class="item-text">Quando abri o aplicativo após um tempo sem usá-lo, vi rapidamente o que eu esperava ver. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="ctx2" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="ctx2" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="ctx2" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="ctx2" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="ctx2" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="ctx2" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="ctx2" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="ctx3">
+    <p class="item-text">As ações que executei (criar, editar, concluir tarefa) tiveram retorno imediato. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="ctx3" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="ctx3" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="ctx3" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="ctx3" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="ctx3" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="ctx3" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="ctx3" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="ctx4">
+    <p class="item-text">Em algum momento fiquei em dúvida se uma alteração minha foi realmente salva. <span class="rev" title="Item de sentido inverso">(R)</span></p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="ctx4" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="ctx4" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="ctx4" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="ctx4" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="ctx4" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="ctx4" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="ctx4" value="7" required><span class="dot">7</span></label></div>
+  </div><div class="item" data-q="ctx5">
+    <p class="item-text">O aplicativo respondeu rapidamente aos meus toques e gestos. </p>
+    <div class="scale scale-7"><label class="opt"><input type="radio" name="ctx5" value="1" required><span class="dot">1</span></label><label class="opt"><input type="radio" name="ctx5" value="2" required><span class="dot">2</span></label><label class="opt"><input type="radio" name="ctx5" value="3" required><span class="dot">3</span></label><label class="opt"><input type="radio" name="ctx5" value="4" required><span class="dot">4</span></label><label class="opt"><input type="radio" name="ctx5" value="5" required><span class="dot">5</span></label><label class="opt"><input type="radio" name="ctx5" value="6" required><span class="dot">6</span></label><label class="opt"><input type="radio" name="ctx5" value="7" required><span class="dot">7</span></label></div>
+  </div>
+    </section>
+
+    <!-- BLOCO 4 - Abertas -->
+    <section>
+      <div class="sec-head"><span class="sec-num">5</span><h2>Em suas palavras</h2></div>
+      <p class="sec-desc">Três perguntas abertas. Responda livremente.</p>
+      <div class="field">
+        <label for="open1">O que mais te agradou no aplicativo nas últimas duas semanas?</label>
+        <textarea id="open1" name="open_liked"></textarea>
+      </div>
+      <div class="field">
+        <label for="open2">O que mais te frustrou ou atrapalhou?</label>
+        <textarea id="open2" name="open_frustrated"></textarea>
+      </div>
+      <div class="field">
+        <label for="open3">Houve algum momento em que você desistiu de usar o aplicativo? Se sim, o que aconteceu?</label>
+        <textarea id="open3" name="open_gaveup"></textarea>
+      </div>
+    </section>
+
+    
+
+    <div class="err-summary" id="errBox"></div>
+    <div class="actions">
+      <button type="submit" class="btn btn-primary" id="submitBtn">Finalizar e baixar respostas</button>
+      <p class="note">Ao finalizar, um arquivo .json será baixado. Envie-o ao pesquisador pelo canal combinado.</p>
+    </div>
+  </form>
+
+  <div class="done" id="done">
+    <div class="check">✓</div>
+    <h2>Respostas registradas!</h2>
+    <p>Seu arquivo de respostas foi baixado automaticamente. Envie-o ao pesquisador por WhatsApp ou e-mail.</p>
+    <p>Se o download não começou, toque abaixo.</p>
+    <div class="filecode" id="fileName"></div>
+    <div class="actions" style="max-width:320px;margin:20px auto 0">
+      <button class="btn btn-primary" id="redownload">Baixar novamente</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PERIOD = "T1";
+const LIKERT_IDS = ["sus1","sus2","sus3","sus4","sus5","sus6","sus7","sus8","sus9","sus10","tf1","tf2","tf3","tf4","tf5","tf6","tf7","tf8","tf9","cs1","cs2","cs3","cs4","cs5","cs6","cs7","cs8","cs9","cs10","ctx1","ctx2","ctx3","ctx4","ctx5"];
+const COMP_IDS   = [];
+const COMP_REQ   = [];
+const ALL_RADIO  = [...LIKERT_IDS, ...COMP_IDS];
+const REVERSE    = ["tf2","tf4","tf6","tf8","cs4","ctx4"];
+const totalItems = ALL_RADIO.length;
+
+document.getElementById('total').textContent = totalItems;
+
+const form = document.getElementById('form');
+const bar  = document.getElementById('bar');
+const answeredEl = document.getElementById('answered');
+
+function countAnswered(){
+  return ALL_RADIO.filter(id => form.querySelector('input[name="'+id+'"]:checked')).length;
+}
+function updateProgress(){
+  const n = countAnswered();
+  answeredEl.textContent = n;
+  bar.style.width = (n / totalItems * 100) + '%';
+}
+form.addEventListener('change', updateProgress);
+
+let lastBlob = null, lastName = '';
+
+function buildResults(){
+  const data = new FormData(form);
+  const likert = {};
+  LIKERT_IDS.forEach(id => { const v = data.get(id); likert[id] = v ? parseInt(v,10) : null; });
+
+  const comparative = {};
+  if(COMP_IDS.length){
+    COMP_IDS.forEach(id => { const v = data.get(id); comparative[id] = v !== null ? parseInt(v,10) : null; });
+  }
+
+  const result = {
+    meta:{
+      instrument: "questionario_periodo",
+      period: PERIOD,
+      participant_id: (data.get('participant_id')||'').trim(),
+      submitted_at: new Date().toISOString(),
+      schema_version: "1.0"
+    },
+    usage:{
+      use_intensity: numOrNull(data.get('use_intensity')),
+      days_used:     numOrNull(data.get('days_used')),
+      tasks_count:   numOrNull(data.get('tasks_count'))
+    },
+    sus:                  pick(likert, ["sus1","sus2","sus3","sus4","sus5","sus6","sus7","sus8","sus9","sus10"]),
+    reliability_technical:pick(likert, ["tf1","tf2","tf3","tf4","tf5","tf6","tf7","tf8","tf9"]),
+    reliability_trust:    pick(likert, ["cs1","cs2","cs3","cs4","cs5","cs6","cs7","cs8","cs9","cs10"]),
+    context:              pick(likert, ["ctx1","ctx2","ctx3","ctx4","ctx5"]),
+    open_answers:{
+      liked:      (data.get('open_liked')||'').trim(),
+      frustrated: (data.get('open_frustrated')||'').trim(),
+      gaveup:     (data.get('open_gaveup')||'').trim()
+    },
+    reverse_items: REVERSE
+  };
+
+  if(PERIOD === 'T2'){
+    result.comparative = {
+      ...comparative,
+      preferred_version: data.get('comp7') || null,
+      preferred_reason:  (data.get('comp8')||'').trim(),
+      noticed_technical: data.get('comp9') || null,
+      noticed_desc:      (data.get('comp9_desc')||'').trim(),
+      suspected_arch:    data.get('comp10') || null,
+      suspected_desc:    (data.get('comp10_desc')||'').trim()
+    };
+  }
+  return result;
+}
+
+function numOrNull(v){ return (v===''||v==null) ? null : Number(v); }
+function pick(obj, ids){ const o={}; ids.forEach(k=>o[k]=obj[k]); return o; }
+
+function validate(){
+  document.querySelectorAll('.item.missing').forEach(e=>e.classList.remove('missing'));
+  const missingItems = [];
+
+  // text/number fields
+  const textFields = ['participant_id','use_intensity','days_used','tasks_count'];
+  const missingText = textFields.filter(n => !(form.querySelector('[name="'+n+'"]').value.trim()));
+
+  // likert radios
+  ALL_RADIO.forEach(id => {
+    if(!form.querySelector('input[name="'+id+'"]:checked')){
+      const item = form.querySelector('.item[data-q="'+id+'"]');
+      if(item){ item.classList.add('missing'); missingItems.push(item); }
+    }
+  });
+
+  // comp required radios (comp7, comp9, comp10)
+  COMP_REQ.forEach(name => {
+    if(!form.querySelector('input[name="'+name+'"]:checked')){
+      const item = form.querySelector('.item[data-q="'+name+'"]') ||
+                   form.querySelector('[name="'+name+'"]')?.closest('.field');
+      // mark parent section if needed — just count
+    }
+  });
+
+  return { missingText, missingItems };
+}
+
+form.addEventListener('submit', function(e){
+  e.preventDefault();
+  const errBox = document.getElementById('errBox');
+  const { missingText, missingItems } = validate();
+  const pid = form.querySelector('[name="participant_id"]').value.trim();
+
+  // also check comp required radios manually
+  let missingComp = 0;
+  COMP_REQ.forEach(name => { if(!form.querySelector('input[name="'+name+'"]:checked')) missingComp++; });
+
+  const totalMissing = missingText.length + missingItems.length + missingComp;
+
+  if(totalMissing > 0){
+    errBox.classList.add('show');
+    errBox.innerHTML = 'Faltam <b>'+totalMissing+'</b> resposta(s). Role a página, preencha os campos destacados e tente novamente.';
+    const first = missingItems[0] || form.querySelector('[name="participant_id"]');
+    if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+  errBox.classList.remove('show');
+
+  const results = buildResults();
+  const json = JSON.stringify(results, null, 2);
+  lastBlob = new Blob([json], {type:'application/json'});
+  const safe = (pid||'SEM_CODIGO').replace(/[^a-zA-Z0-9_-]/g,'_');
+  lastName = 'respostas_'+PERIOD+'_'+safe+'.json';
+
+  triggerDownload();
+
+  document.querySelector('header').style.display='none';
+  form.style.display='none';
+  document.querySelector('.progress-wrap').style.display='none';
+  const done = document.getElementById('done');
+  done.classList.add('show');
+  document.getElementById('fileName').textContent = lastName;
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+function triggerDownload(){
+  if(!lastBlob) return;
+  const url = URL.createObjectURL(lastBlob);
+  const a = document.createElement('a');
+  a.href=url; a.download=lastName;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1500);
+}
+document.getElementById('redownload').addEventListener('click', triggerDownload);
+</script>
+</body>
+</html>
