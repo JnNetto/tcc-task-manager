@@ -32,3 +32,9 @@ Future<DateTime> loadStudyStartDate() async {
   await prefs.setString('study_start_date', now.toIso8601String());
   return now;
 }
+
+/// Alinha prefs locais com o [study_started_at] do RTDB (telemetria / dia do estudo).
+Future<void> saveStudyStartDateUtc(DateTime utc) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString('study_start_date', utc.toIso8601String());
+}

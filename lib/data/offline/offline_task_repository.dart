@@ -4,6 +4,7 @@ import '../../domain/models/sync_status.dart';
 import '../../domain/models/task.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../../services/telemetry_service.dart';
+import 'offline_mutation_sync_trigger.dart';
 import 'task_hive_model.dart';
 
 class OfflineTaskRepository implements TaskRepository {
@@ -27,23 +28,26 @@ class OfflineTaskRepository implements TaskRepository {
       success: true,
       local: true,
     );
+    scheduleOfflineSyncAfterMutation();
   }
 
   @override
   Stream<List<Task>> watchTasks() {
     List<Task> buildTasks() {
-      final tasks = _box.values
-          .where((m) => m.syncStatus != SyncStatus.deleted.index)
-          .map((m) => m.toDomain())
-          .toList()
-        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      final tasks =
+          _box.values
+              .where((m) => m.syncStatus != SyncStatus.deleted.index)
+              .map((m) => m.toDomain())
+              .toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       TelemetryService.instance.logEvent(
         'tasks_loaded_local',
         data: {
           'count': tasks.length,
-          'pending':
-              tasks.where((t) => t.syncStatus == SyncStatus.pending).length,
+          'pending': tasks
+              .where((t) => t.syncStatus == SyncStatus.pending)
+              .length,
         },
       );
       return tasks;
@@ -72,13 +76,7 @@ class OfflineTaskRepository implements TaskRepository {
       success: true,
       local: true,
     );
-  }
-
-  @override
-  Future<void> reorderTasks(List<Task> orderedTasks) async {
-    // Reordenacao e apenas preferencia local de UI (TaskProvider).
-    // Nao altera estado de sincronizacao nem dados persistidos da tarefa.
-    return;
+    scheduleOfflineSyncAfterMutation();
   }
 
   @override
@@ -88,6 +86,7 @@ class OfflineTaskRepository implements TaskRepository {
       model.syncStatus = SyncStatus.deleted.index;
       model.pendingSince = DateTime.now();
       await model.save();
+      scheduleOfflineSyncAfterMutation();
     }
     TelemetryService.instance.logOperationCompleted(
       'delete',
@@ -113,20 +112,14 @@ class OfflineTaskRepository implements TaskRepository {
 
   Future<void> createTaskFromRemote(Task task) async {
     final model = TaskHiveModel.fromDomain(
-      task.copyWith(
-        syncStatus: SyncStatus.synced,
-        pendingSince: null,
-      ),
+      task.copyWith(syncStatus: SyncStatus.synced, pendingSince: null),
     );
     await _box.put(task.id, model);
   }
 
   Future<void> updateTaskFromRemote(Task task) async {
     final model = TaskHiveModel.fromDomain(
-      task.copyWith(
-        syncStatus: SyncStatus.synced,
-        pendingSince: null,
-      ),
+      task.copyWith(syncStatus: SyncStatus.synced, pendingSince: null),
     );
     await _box.put(task.id, model);
   }

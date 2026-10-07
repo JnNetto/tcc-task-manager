@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../config/debug_admin.dart';
 import '../../domain/models/participant_study_config.dart';
+import '../../domain/models/subjective_questionnaire_payload.dart';
 
 /// Linha da lista de participantes (dados em `participants/{id}`).
 class AdminParticipantRow {
@@ -108,23 +109,19 @@ class AdminStudyRemoteService {
       'display_name': displayName.trim(),
       'days_online_phase': 0,
       'days_offline_phase': 0,
-      'study_started_at': DateTime.now().toUtc().toIso8601String(),
-      'profile_questionnaire': {
-        'name': displayName.trim(),
-        'age': 25,
-        'gender': 'prefer_not',
-        'education': 'edu_skip',
-        'consent_version': 'admin-provisioned',
-        'consent_accepted_at': DateTime.now().toUtc().toIso8601String(),
-      },
     });
   }
 
-  Future<void> updateArchitecture(String participantId, String architecture) {
+  Future<void> updateArchitecture(String participantId, String architecture) async {
     final arch = architecture == ParticipantStudyConfig.kOfflineFirst
         ? ParticipantStudyConfig.kOfflineFirst
         : ParticipantStudyConfig.kOnlineFirst;
-    return _participants.child(participantId).update({'architecture': arch});
+    final base = _participants.child(participantId);
+    await base.update({'architecture': arch});
+    await base.child('architecture_timeline').push().set({
+      'changed_at': DateTime.now().toUtc().toIso8601String(),
+      'architecture': arch,
+    });
   }
 
   Future<void> updateFlags({
@@ -138,18 +135,96 @@ class AdminStudyRemoteService {
     });
   }
 
-  Future<void> updateDayCounters({
-    required String participantId,
-    required int daysOnline,
-    required int daysOffline,
-  }) {
-    return _participants.child(participantId).update({
-      'days_online_phase': daysOnline,
-      'days_offline_phase': daysOffline,
+  /// Define `app_enabled` em massa para todos os nós em `participants/*`.
+  ///
+  /// Por omissão exclui [kDebugAdminParticipantId] para o investigador não
+  /// ficar bloqueado no ecrã de estudo encerrado.
+  /// Devolve o número de participantes atualizados.
+  Future<int> setAllAppsEnabled(
+    bool enabled, {
+    bool includeAdmin = false,
+  }) async {
+    final snap = await _participants.get();
+    if (!snap.exists || snap.value is! Map) return 0;
+
+    final updates = <String, Object?>{};
+    (snap.value! as Map).forEach((k, val) {
+      if (k is! String) return;
+      if (!includeAdmin && k == kDebugAdminParticipantId) return;
+      if (val is! Map) return;
+      updates['$k/app_enabled'] = enabled;
     });
+    if (updates.isEmpty) return 0;
+    await _participants.update(updates);
+    return updates.length;
   }
 
   /// Exporta eventos de `telemetry/{id}` filtrados pelo campo `architecture`.
+  Future<ParticipantStudyConfig?> fetchParticipantConfig(String participantId) async {
+    final snap = await _participants.child(participantId).get();
+    if (!snap.exists || snap.value is! Map) return null;
+    final map = (snap.value! as Map).map((k, v) => MapEntry(k.toString(), v));
+    return ParticipantStudyConfig.fromMap(map);
+  }
+
+  /// Grava resposta subjetiva em `participants/{id}/subjective_questionnaires/{T1|T2}`.
+  Future<SubjectiveQuestionnaireImportRecord> importSubjectiveQuestionnaire(
+    SubjectiveQuestionnairePayload payload,
+  ) async {
+    final cfg = await fetchParticipantConfig(payload.participantId);
+    if (cfg == null) {
+      throw StateError(
+        'Participante ${payload.participantId} nao encontrado no RTDB.',
+      );
+    }
+
+    final assigned = cfg.architecture;
+    final archDuring = SubjectiveQuestionnairePayload.architectureDuringPeriod(
+      assignedArchitecture: assigned,
+      period: payload.period,
+    );
+
+    final record = SubjectiveQuestionnaireImportRecord(
+      period: payload.period,
+      participantId: payload.participantId,
+      participantDisplayName: cfg.registeredParticipantName ?? payload.participantId,
+      assignedArchitecture: assigned,
+      architectureDuringPeriod: archDuring,
+      submittedAt: payload.submittedAt,
+      importedAt: DateTime.now().toUtc().toIso8601String(),
+      schemaVersion: payload.schemaVersion,
+      responses: payload.raw,
+    );
+
+    await _participants
+        .child(payload.participantId)
+        .child('subjective_questionnaires')
+        .child(payload.period)
+        .set(record.toMap());
+
+    return record;
+  }
+
+  Future<Map<String, SubjectiveQuestionnaireImportRecord?>>
+      fetchSubjectiveQuestionnaireStatus(String participantId) async {
+    final snap = await _participants
+        .child(participantId)
+        .child('subjective_questionnaires')
+        .get();
+    if (!snap.exists || snap.value is! Map) {
+      return {'T1': null, 'T2': null};
+    }
+    final map = Map<dynamic, dynamic>.from(snap.value! as Map);
+    SubjectiveQuestionnaireImportRecord? readPeriod(String key) {
+      final v = map[key];
+      if (v is! Map) return null;
+      return SubjectiveQuestionnaireImportRecord.fromMap(
+        v.map((k, val) => MapEntry(k.toString(), val)),
+      );
+    }
+    return {'T1': readPeriod('T1'), 'T2': readPeriod('T2')};
+  }
+
   Future<void> shareTelemetryExport({
     required String participantId,
     required String architectureFilter,

@@ -44,7 +44,6 @@ class AdminRtdbBootstrap {
         'display_name': 'Administrador (debug)',
         'days_online_phase': 0,
         'days_offline_phase': 0,
-        'study_started_at': DateTime.now().toUtc().toIso8601String(),
         'profile_questionnaire': {
           'name': 'Administrador',
           'age': 30,

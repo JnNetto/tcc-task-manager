@@ -9,6 +9,7 @@ import 'admin/admin_participants_screen.dart';
 import '../providers/task_provider.dart';
 import '../utils/task_list_error_messages.dart';
 import '../widgets/common/loading_indicator.dart';
+import '../widgets/participant_impression_sheet.dart';
 import '../widgets/task_card.dart';
 import 'settings_screen.dart';
 import 'task_detail_screen.dart';
@@ -60,6 +61,19 @@ class _TaskListScreenState extends State<TaskListScreen> {
             onPressed: () => unawaited(taskProvider.refreshTasks()),
           ),
           IconButton(
+            tooltip: 'Escrever comentario sobre o app',
+            icon: const Icon(Icons.rate_review_outlined),
+            onPressed: () async {
+              final saved = await showParticipantImpressionSheet(context);
+              if (!context.mounted || saved != true) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Comentario guardado. Obrigado!'),
+                ),
+              );
+            },
+          ),
+          IconButton(
             tooltip: 'Configuracoes e exportacao',
             icon: const Icon(Icons.settings_outlined),
             onPressed: () async {
@@ -102,13 +116,14 @@ class _TaskListScreenState extends State<TaskListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const TaskFormScreen()),
           );
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Adicionar tarefa'),
       ),
     );
   }

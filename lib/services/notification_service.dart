@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,10 +25,56 @@ class NotificationService {
   static const _channelName = 'Lembretes de Tarefas';
   static const _channelDesc =
       'Notificacoes de lembretes para as suas tarefas';
+  static const _engagementChannelId = 'engagement_reminder_channel';
+  static const _engagementChannelName = 'Lembretes do estudo';
+  static const _engagementChannelDesc =
+      'Sugestoes para usar o app durante o periodo do estudo';
   static const _kRecurringConfigsKey = 'recurring_task_notifications';
+  static const _kEngagementScheduledKey = 'engagement_reminders_scheduled_v1';
   static const _kDailyWindowDays = 30;
+  static const _kEngagementCount = 14;
+  static const _kEngagementIntervalDays = 2;
+  static const _kEngagementHour = 10;
+  static const _kEngagementMinute = 0;
+
+  static const _engagementTitle = 'Lembrete amigável';
+
+  /// Mensagens rotativas (uma por notificacao, 14 no total).
+  static const _engagementBodies = [
+    'Olá, que tal agendar uma tarefa?',
+    'Lembre-se que anotar ajuda a lembrar!',
+    'Que tal abrir o app e organizar o seu dia?',
+    'Uma tarefa de cada vez — comece por uma pequena!',
+    'O seu bloco de notas está à espera. Visite-o hoje!',
+    'Registrar ideias agora poupa tempo depois.',
+    'Já pensou no que precisa fazer hoje?',
+    'Um minuto no app pode organizar a sua semana.',
+    'Não deixe as tarefas na cabeça — anote-as aqui!',
+    'Que tal rever as suas prioridades?',
+    'Pequenos passos levam a grandes resultados. Anote um!',
+    'O hábito de anotar começa com uma visita ao app.',
+    'Tem algo pendente? Registe como tarefa!',
+    'Voltar ao app mantém tudo sob controlo. Até já!',
+  ];
 
   static bool _inited = false;
+
+  static const _batteryChannel = MethodChannel('com.example.tcc_task_manager/battery');
+
+  /// Solicita isenção de otimização de bateria (Doze mode) se ainda não concedida.
+  /// Necessário para que o AlarmManager dispare no horário exato em Android 6+.
+  static Future<void> requestBatteryOptimizationExemption() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final isExempt =
+          await _batteryChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ?? true;
+      if (!isExempt) {
+        await _batteryChannel.invokeMethod('requestIgnoreBatteryOptimizations');
+      }
+    } catch (e) {
+      debugPrint('Battery optimization check failed: $e');
+    }
+  }
 
   static Future<void> initialize() async {
     if (_inited) return;
@@ -53,6 +101,17 @@ class NotificationService {
             _channelName,
             description: _channelDesc,
             importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
+            showBadge: true,
+          ),
+        );
+        await android.createNotificationChannel(
+          const AndroidNotificationChannel(
+            _engagementChannelId,
+            _engagementChannelName,
+            description: _engagementChannelDesc,
+            importance: Importance.defaultImportance,
             playSound: true,
             enableVibration: true,
             showBadge: true,
@@ -116,6 +175,10 @@ class NotificationService {
   /// em Doze / fabricantes.
   static Future<bool> _canScheduleExactAlarms() async {
     if (!Platform.isAndroid) return true;
+    // Antes do Android 12 (API 31) alarmes exatos são sempre permitidos.
+    // SCHEDULE_EXACT_ALARM só existe a partir do API 31.
+    final sdkInt = (await DeviceInfoPlugin().androidInfo).version.sdkInt;
+    if (sdkInt < 31) return true;
     final android = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -144,6 +207,77 @@ class NotificationService {
   static Future<void> requestAndroidPostNotificationsPermission() async {
     await initialize();
     await _ensureNotificationsPermission();
+  }
+
+  // ====== Lembretes de engajamento (primeira identificação no dispositivo) ======
+
+  /// Agenda [_kEngagementCount] notificações locais, espaçadas de
+  /// [_kEngagementIntervalDays] dias, na primeira vez que o participante
+  /// conclui o onboarding neste dispositivo. Idempotente via SharedPreferences.
+  static Future<void> scheduleEngagementRemindersIfNeeded() async {
+    await initialize();
+
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_kEngagementScheduledKey) == true) {
+      return;
+    }
+
+    final hasNotifPerm = await _ensureNotificationsPermission();
+    if (!hasNotifPerm) {
+      debugPrint(
+        'POST_NOTIFICATIONS negada. Lembretes de engajamento nao agendados.',
+      );
+      return;
+    }
+
+    final canExact = await _canScheduleExactAlarms();
+    final scheduleMode = canExact
+        ? AndroidScheduleMode.exactAllowWhileIdle
+        : AndroidScheduleMode.inexactAllowWhileIdle;
+    const details = NotificationDetails(android: _engagementAndroidDetails);
+
+    final now = tz.TZDateTime.now(tz.local);
+    var scheduled = 0;
+
+    for (var i = 0; i < _kEngagementCount; i++) {
+      final dayOffset = (i + 1) * _kEngagementIntervalDays;
+      final targetDay = now.add(Duration(days: dayOffset));
+      final scheduledDate = tz.TZDateTime(
+        tz.local,
+        targetDay.year,
+        targetDay.month,
+        targetDay.day,
+        _kEngagementHour,
+        _kEngagementMinute,
+      );
+      if (scheduledDate.isBefore(now)) continue;
+
+      final body = _engagementBodies[i % _engagementBodies.length];
+      final id = _stableId('engagement:$i');
+
+      try {
+        await _plugin.zonedSchedule(
+          id,
+          _engagementTitle,
+          body,
+          scheduledDate,
+          details,
+          androidScheduleMode: scheduleMode,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          payload: 'engagement:$i',
+        );
+        scheduled++;
+        debugPrint('Lembrete de engajamento $i em $scheduledDate');
+      } catch (e) {
+        debugPrint('Falha ao agendar lembrete de engajamento $i: $e');
+      }
+    }
+
+    if (scheduled > 0) {
+      await prefs.setBool(_kEngagementScheduledKey, true);
+      debugPrint('$scheduled lembretes de engajamento agendados');
+    }
   }
 
   // ====== API principal (espelha scheduleNotificationForAnnotation) ======
@@ -229,33 +363,41 @@ class NotificationService {
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) return;
 
     final canExact = await _canScheduleExactAlarms();
-    final scheduleMode = canExact
-        ? AndroidScheduleMode.exactAllowWhileIdle
-        : AndroidScheduleMode.inexactAllowWhileIdle;
-
     final notificationData = _getNotificationContent(task);
     const details = NotificationDetails(android: _androidDetails);
+    final id = _stableId('single:${task.id}');
 
-    try {
-      final id = _stableId('single:${task.id}');
-      await _plugin.zonedSchedule(
-        id,
-        notificationData['title'],
-        notificationData['body'],
-        scheduledDate,
-        details,
-        androidScheduleMode: scheduleMode,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
-        payload: 'task:${task.id}',
-      );
-      debugPrint(
-        'Notificacao unica agendada: ${task.id} em $scheduledDate',
-      );
-    } catch (e) {
-      debugPrint('Falha ao agendar notificacao unica: $e');
-      rethrow;
+    // Tenta exato; se o dispositivo bloquear (ex.: OEM com bateria restritiva),
+    // cai para inexato antes de propagar o erro.
+    final modes = [
+      if (canExact) AndroidScheduleMode.exactAllowWhileIdle,
+      AndroidScheduleMode.inexactAllowWhileIdle,
+    ];
+
+    Object? lastError;
+    StackTrace? lastStack;
+    for (final mode in modes) {
+      try {
+        await _plugin.zonedSchedule(
+          id,
+          notificationData['title'],
+          notificationData['body'],
+          scheduledDate,
+          details,
+          androidScheduleMode: mode,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+          payload: 'task:${task.id}',
+        );
+        debugPrint('Notificacao unica agendada: ${task.id} em $scheduledDate ($mode)');
+        return;
+      } catch (e, st) {
+        debugPrint('=== NOTIF ERROR ($mode) ===\n$e\n$st\n=== END ===');
+        lastError = e;
+        lastStack = st;
+      }
     }
+    Error.throwWithStackTrace(lastError!, lastStack!);
   }
 
   // ====== Recorrentes (pré-agenda na janela, como o exemplo) ======
@@ -641,6 +783,17 @@ class NotificationService {
     channelDescription: _channelDesc,
     importance: Importance.high,
     priority: Priority.high,
+    showWhen: true,
+    enableVibration: true,
+    playSound: true,
+  );
+
+  static const _engagementAndroidDetails = AndroidNotificationDetails(
+    _engagementChannelId,
+    _engagementChannelName,
+    channelDescription: _engagementChannelDesc,
+    importance: Importance.defaultImportance,
+    priority: Priority.defaultPriority,
     showWhen: true,
     enableVibration: true,
     playSound: true,

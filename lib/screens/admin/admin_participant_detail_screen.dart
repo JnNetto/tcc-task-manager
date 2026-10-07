@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/experiment/admin_study_remote_service.dart';
 import '../../domain/models/participant_study_config.dart';
+import '../../domain/models/subjective_questionnaire_payload.dart';
 
 class AdminParticipantDetailScreen extends StatefulWidget {
   const AdminParticipantDetailScreen({
@@ -22,8 +23,6 @@ class AdminParticipantDetailScreen extends StatefulWidget {
 
 class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScreen> {
   final _service = AdminStudyRemoteService();
-  final _daysOnlineCtrl = TextEditingController();
-  final _daysOfflineCtrl = TextEditingController();
 
   bool _loading = true;
   Object? _error;
@@ -33,18 +32,15 @@ class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScr
   bool _saving = false;
   bool _exporting = false;
 
+  ParticipantStudyConfig? _cfg;
+  String _originalArchitecture = ParticipantStudyConfig.kOnlineFirst;
+  Map<String, SubjectiveQuestionnaireImportRecord?> _questionnaires = const {};
+
   @override
   void initState() {
     super.initState();
     assert(kDebugMode);
     _load();
-  }
-
-  @override
-  void dispose() {
-    _daysOnlineCtrl.dispose();
-    _daysOfflineCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -64,8 +60,10 @@ class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScr
       _architecture = cfg.architecture;
       _appEnabled = cfg.appEnabled;
       _telemetryEnabled = cfg.telemetryEnabled;
-      _daysOnlineCtrl.text = '${cfg.daysOnlinePhase ?? 0}';
-      _daysOfflineCtrl.text = '${cfg.daysOfflinePhase ?? 0}';
+      _cfg = cfg;
+      _originalArchitecture = cfg.architecture;
+      _questionnaires =
+          await _service.fetchSubjectiveQuestionnaireStatus(widget.participantId);
     } catch (e) {
       _error = e;
     } finally {
@@ -76,18 +74,13 @@ class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScr
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await _service.updateArchitecture(widget.participantId, _architecture);
+      if (_architecture != _originalArchitecture) {
+        await _service.updateArchitecture(widget.participantId, _architecture);
+      }
       await _service.updateFlags(
         participantId: widget.participantId,
         appEnabled: _appEnabled,
         telemetryEnabled: _telemetryEnabled,
-      );
-      final dOn = int.tryParse(_daysOnlineCtrl.text.trim()) ?? 0;
-      final dOff = int.tryParse(_daysOfflineCtrl.text.trim()) ?? 0;
-      await _service.updateDayCounters(
-        participantId: widget.participantId,
-        daysOnline: dOn.clamp(0, 9999),
-        daysOffline: dOff.clamp(0, 9999),
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -124,6 +117,15 @@ class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScr
     }
   }
 
+  String _studyStartedLabel(ParticipantStudyConfig? c) {
+    final s = c?.studyStartedAt;
+    if (s == null) {
+      return 'Ainda nao iniciou no telemovel (sem study_started_at). '
+          'Gravado na primeira abertura com codigo valido.';
+    }
+    return s.toUtc().toIso8601String();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -138,6 +140,10 @@ class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScr
         body: Center(child: Text('$_error')),
       );
     }
+
+    final cfg = _cfg!;
+    final daysOn = cfg.daysOnlinePhase ?? 0;
+    final daysOff = cfg.daysOfflinePhase ?? 0;
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.participantId)),
@@ -189,24 +195,68 @@ class _AdminParticipantDetailScreenState extends State<AdminParticipantDetailScr
               value: _telemetryEnabled,
               onChanged: (v) => setState(() => _telemetryEnabled = v),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'Tempo no experimento (somente leitura)',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _daysOnlineCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Dias em online-first (referencia)',
-                border: OutlineInputBorder(),
+            Text(
+              'Contagem em dias civis UTC desde a primeira ligação ao app com '
+              'codigo valido. Cada dia conta para online-first ou offline-first '
+              'consoante a arquitetura vigente nesse dia (meio-dia UTC), '
+              'incluindo mudanças feitas aqui.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _daysOfflineCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Dias em offline-first (referencia)',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Início do experimento (study_started_at)'),
+              subtitle: Text(_studyStartedLabel(cfg)),
             ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Dias acumulados em online-first'),
+              subtitle: Text('$daysOn'),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Dias acumulados em offline-first'),
+              subtitle: Text('$daysOff'),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Questionarios subjetivos (T1 / T2)',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            ...['T1', 'T2'].map((period) {
+              final q = _questionnaires[period];
+              final archLabel = q?.architectureDuringPeriod ??
+                  SubjectiveQuestionnairePayload.architectureDuringPeriod(
+                    assignedArchitecture: cfg.architecture,
+                    period: period,
+                  );
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('Periodo $period'),
+                subtitle: Text(
+                  q == null
+                      ? 'Nao importado  ·  arquitetura esperada: $archLabel'
+                      : 'Importado em ${q.importedAt}\n'
+                          'Arquitetura no periodo: ${q.architectureDuringPeriod}',
+                ),
+                isThreeLine: q != null,
+                trailing: Icon(
+                  q == null ? Icons.radio_button_unchecked : Icons.check_circle,
+                  color: q == null ? Colors.grey : Colors.green,
+                  size: 20,
+                ),
+              );
+            }),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _saving ? null : _save,

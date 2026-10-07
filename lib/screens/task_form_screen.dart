@@ -373,14 +373,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
           await NotificationService.scheduleForTask(task);
         }
       } catch (e, st) {
-        debugPrint('Agendamento de lembrete apos guardar tarefa: $e\n$st');
+        debugPrint('=== LEMBRETE NAO AGENDADO ===\n$e\n$st\n=== END ===');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                'Tarefa guardada. O lembrete pode nao ter sido agendado — '
-                'verifique permissoes de notificacao nas definicoes.',
+                'Tarefa guardada, mas o lembrete nao foi agendado: $e',
               ),
+              duration: const Duration(seconds: 8),
             ),
           );
         }

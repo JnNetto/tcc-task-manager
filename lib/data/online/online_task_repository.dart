@@ -54,12 +54,12 @@ class OnlineTaskRepository implements TaskRepository {
         .orderBy('createdAt', descending: true)
         .snapshots(includeMetadataChanges: false)
         .map((s) {
-      TelemetryService.instance.logEvent(
-        'tasks_fetched_server',
-        data: {'count': s.docs.length},
-      );
-      return s.docs.map((d) => Task.fromFirestore(d)).toList();
-    });
+          TelemetryService.instance.logEvent(
+            'tasks_fetched_server',
+            data: {'count': s.docs.length},
+          );
+          return s.docs.map((d) => Task.fromFirestore(d)).toList();
+        });
   }
 
   @override
@@ -83,13 +83,6 @@ class OnlineTaskRepository implements TaskRepository {
         rethrow;
       }
     });
-  }
-
-  @override
-  Future<void> reorderTasks(List<Task> orderedTasks) async {
-    // Reordenacao e apenas preferencia local de UI (TaskProvider).
-    // Nao persiste no Firestore para nao misturar com a camada arquitetural.
-    return;
   }
 
   @override

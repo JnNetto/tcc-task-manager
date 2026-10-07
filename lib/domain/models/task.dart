@@ -100,24 +100,61 @@ class Task {
   };
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final raw = doc.data();
+    if (raw == null) {
+      throw StateError('Documento Firestore sem dados: ${doc.id}');
+    }
+    final data = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+
+    DateTime readTs(Object? v, {required DateTime fallback}) {
+      if (v is Timestamp) return v.toDate();
+      if (v is DateTime) return v;
+      return fallback;
+    }
+
+    final now = DateTime.now();
+    final created = readTs(data['createdAt'], fallback: now);
+    final updated = readTs(data['updatedAt'], fallback: created);
+
+    final pr = TaskPriority.values.length - 1;
+    var pi = 1;
+    final pRaw = data['priority'];
+    if (pRaw is int) {
+      pi = pRaw.clamp(0, pr);
+    } else if (pRaw is num) {
+      pi = pRaw.toInt().clamp(0, pr);
+    }
+
+    List<int> readIntList(Object? v) {
+      if (v is! List) return const [];
+      return v.map((e) {
+        if (e is int) return e;
+        if (e is num) return e.toInt();
+        return 0;
+      }).toList();
+    }
+
+    final title = data['title']?.toString() ?? '';
+
     return Task(
       id: doc.id,
-      title: data['title'] as String,
-      description: data['description'] as String?,
-      isCompleted: data['isCompleted'] as bool? ?? false,
-      priority: TaskPriority.values[data['priority'] as int? ?? 1],
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      updatedAt: (data['updatedAt'] as Timestamp).toDate(),
-      sortOrder: data['sortOrder'] as int?,
+      title: title,
+      description: data['description']?.toString(),
+      isCompleted: data['isCompleted'] == true,
+      priority: TaskPriority.values[pi],
+      createdAt: created,
+      updatedAt: updated,
+      sortOrder: (data['sortOrder'] is int)
+          ? data['sortOrder'] as int
+          : (data['sortOrder'] is num)
+              ? (data['sortOrder'] as num).toInt()
+              : null,
       syncStatus: SyncStatus.synced,
       reminderAt: (data['reminderAt'] as Timestamp?)?.toDate(),
-      isRecurring: data['isRecurring'] as bool? ?? false,
-      recurringHours: (data['recurringHours'] as List?)?.cast<int>() ?? const [],
-      recurringMinutes:
-          (data['recurringMinutes'] as List?)?.cast<int>() ?? const [],
-      recurringWeekdays:
-          (data['recurringWeekdays'] as List?)?.cast<int>() ?? const [],
+      isRecurring: data['isRecurring'] == true,
+      recurringHours: readIntList(data['recurringHours']),
+      recurringMinutes: readIntList(data['recurringMinutes']),
+      recurringWeekdays: readIntList(data['recurringWeekdays']),
       reminderEndDate: (data['reminderEndDate'] as Timestamp?)?.toDate(),
     );
   }

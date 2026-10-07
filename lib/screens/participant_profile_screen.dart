@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../domain/models/profile_questionnaire.dart';
 import '../legal/research_consent.dart';
+import '../utils/participant_name_match.dart';
 
 /// Questionário básico após o código (nome, idade, género, escolaridade).
 class ParticipantProfileScreen extends StatefulWidget {
   const ParticipantProfileScreen({
     super.key,
     required this.onSubmit,
+    this.registeredName,
   });
 
   final Future<void> Function(ProfileQuestionnaire answers) onSubmit;
+
+  /// Nome cadastrado com o codigo no RTDB; deve coincidir com o campo do formulario.
+  final String? registeredName;
 
   @override
   State<ParticipantProfileScreen> createState() => _ParticipantProfileScreenState();
@@ -126,6 +131,15 @@ class _ParticipantProfileScreenState extends State<ParticipantProfileScreen> {
                 'Responda ao questionário para continuar. Os dados são usados apenas no âmbito do estudo.',
                 style: TextStyle(fontSize: 15),
               ),
+              if (widget.registeredName != null &&
+                  widget.registeredName!.trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Use o mesmo nome ou pseudónimo que lhe foi atribuido no estudo '
+                  '(cadastro deste codigo).',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
               const SizedBox(height: 24),
               TextFormField(
                 controller: _nameCtrl,
@@ -136,6 +150,12 @@ class _ParticipantProfileScreenState extends State<ParticipantProfileScreen> {
                 textCapitalization: TextCapitalization.words,
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Obrigatório';
+                  final expected = widget.registeredName?.trim();
+                  if (expected != null &&
+                      expected.isNotEmpty &&
+                      !participantNamesMatch(v, expected)) {
+                    return 'O nome nao coincide com o cadastro deste codigo.';
+                  }
                   return null;
                 },
               ),

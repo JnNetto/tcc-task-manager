@@ -9,14 +9,17 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:tcc_task_manager/firebase_options.dart';
 import 'app.dart';
+import 'config/app_locale.dart';
 import 'config/app_theme.dart';
 import 'config/debug_admin.dart';
 import 'data/experiment/admin_rtdb_bootstrap.dart';
+import 'data/experiment/cross_architecture_task_bridge.dart';
 import 'data/experiment/participant_remote_config_service.dart';
 import 'data/hive/telemetry_event_model.dart';
 import 'data/offline/sync_service.dart';
 import 'data/offline/task_hive_model.dart';
 import 'data/study_repository_factory.dart';
+import 'domain/models/participant_study_config.dart';
 import 'domain/models/profile_questionnaire.dart';
 import 'domain/repositories/task_repository.dart';
 import 'providers/study_session_controller.dart';
@@ -27,6 +30,10 @@ import 'services/network_simulator.dart';
 import 'services/notification_service.dart';
 import 'services/telemetry_service.dart';
 import 'utils/participant_loader.dart';
+import 'utils/participant_name_match.dart';
+
+/// Evita chamar [FirebaseFirestore.settings] repetidamente a cada rebuild.
+bool? _firestorePersistenceOnlineFirst;
 
 /// Ponto de entrada único do estudo (app único, arquitetura remota).
 ///
@@ -90,6 +97,9 @@ class _StudyAppEntryState extends State<_StudyAppEntry> {
       if (!mounted) return;
       runApp(
         MaterialApp(
+          locale: AppLocale.defaultLocale,
+          supportedLocales: AppLocale.supportedLocales,
+          localizationsDelegates: AppLocale.delegates,
           theme: AppTheme.light(),
           home: Scaffold(
             body: SafeArea(
@@ -118,6 +128,9 @@ class _StudyAppEntryState extends State<_StudyAppEntry> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      locale: AppLocale.defaultLocale,
+      supportedLocales: AppLocale.supportedLocales,
+      localizationsDelegates: AppLocale.delegates,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
@@ -164,6 +177,7 @@ class _PreStudyFlowApp extends StatefulWidget {
 
 class _PreStudyFlowAppState extends State<_PreStudyFlowApp> {
   String? _participantId;
+  String? _registeredNameForProfile;
   Object? _loadError;
 
   Future<void> _onCodeSubmitted(String digits) async {
@@ -184,10 +198,21 @@ class _PreStudyFlowAppState extends State<_PreStudyFlowApp> {
         await _bootstrapWithParticipantId(id);
         return;
       }
-      setState(() => _participantId = id);
+      setState(() {
+        _participantId = id;
+        _registeredNameForProfile = cfg.registeredParticipantName;
+      });
     } catch (e) {
       setState(() => _loadError = e.toString());
     }
+  }
+
+  void _returnToCodeEntry(String message) {
+    setState(() {
+      _participantId = null;
+      _registeredNameForProfile = null;
+      _loadError = message;
+    });
   }
 
   Future<void> _onProfileSubmitted(ProfileQuestionnaire answers) async {
@@ -196,6 +221,23 @@ class _PreStudyFlowAppState extends State<_PreStudyFlowApp> {
     setState(() => _loadError = null);
     try {
       final remote = ParticipantRemoteConfigService();
+      final cfg = await remote.fetchParticipant(id);
+      if (cfg == null) {
+        _returnToCodeEntry(
+          'Participante nao encontrado. Verifique o codigo ou o RTDB.',
+        );
+        return;
+      }
+      final expected = cfg.registeredParticipantName;
+      if (expected != null &&
+          expected.isNotEmpty &&
+          !participantNamesMatch(answers.name, expected)) {
+        _returnToCodeEntry(
+          'O nome informado nao corresponde ao cadastrado para este codigo. '
+          'Verifique o codigo e tente novamente.',
+        );
+        return;
+      }
       await remote.saveProfileQuestionnaire(id, answers);
       await saveParticipantId(id);
       await _bootstrapWithParticipantId(id);
@@ -208,6 +250,9 @@ class _PreStudyFlowAppState extends State<_PreStudyFlowApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Identificacao do participante',
+      locale: AppLocale.defaultLocale,
+      supportedLocales: AppLocale.supportedLocales,
+      localizationsDelegates: AppLocale.delegates,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       debugShowCheckedModeBanner: false,
@@ -227,6 +272,7 @@ class _PreStudyFlowAppState extends State<_PreStudyFlowApp> {
                         onPressed: () => setState(() {
                           _loadError = null;
                           _participantId = null;
+                          _registeredNameForProfile = null;
                         }),
                         child: const Text('Tentar novamente'),
                       ),
@@ -237,7 +283,10 @@ class _PreStudyFlowAppState extends State<_PreStudyFlowApp> {
             );
           }
           if (_participantId != null) {
-            return ParticipantProfileScreen(onSubmit: _onProfileSubmitted);
+            return ParticipantProfileScreen(
+              registeredName: _registeredNameForProfile,
+              onSubmit: _onProfileSubmitted,
+            );
           }
           return ParticipantOnboardingScreen(onSubmit: _onCodeSubmitted);
         },
@@ -257,19 +306,58 @@ Future<void> _bootstrapWithParticipantId(String participantId) async {
   final tasksBox = await Hive.openBox<TaskHiveModel>('tasks');
   await Hive.openBox<TelemetryEventModel>('telemetry');
 
-  final studyStart = await loadStudyStartDate();
   final remote = ParticipantRemoteConfigService();
+  final initialFetch = await remote.fetchParticipant(participantId);
+  if (initialFetch == null) {
+    runApp(
+      MaterialApp(
+        locale: AppLocale.defaultLocale,
+        supportedLocales: AppLocale.supportedLocales,
+        localizationsDelegates: AppLocale.delegates,
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Nao foi possivel carregar a configuracao remota.\n'
+                'Verifique RTDB e o nó participants/$participantId.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
+  final initialCfg =
+      await remote.ensureEnrollmentMetaAndPhaseTally(participantId);
+  final studyStart = initialCfg.studyStartedAt ?? DateTime.now().toUtc();
+  await saveStudyStartDateUtc(studyStart);
 
   final session = StudySessionController(
     participantId: participantId,
     studyStartDate: studyStart,
     remote: remote,
+    onArchitectureTransition: (oldArch, newArch) async {
+      if (oldArch == ParticipantStudyConfig.kOfflineFirst &&
+          newArch == ParticipantStudyConfig.kOnlineFirst) {
+        await CrossArchitectureTaskBridge.flushPendingToFirestore(
+          tasksBox: tasksBox,
+          participantId: participantId,
+        );
+      }
+    },
   );
   await session.refreshRemoteConfig();
   final initial = session.remoteConfig;
   if (initial == null) {
     runApp(
       MaterialApp(
+        locale: AppLocale.defaultLocale,
+        supportedLocales: AppLocale.supportedLocales,
+        localizationsDelegates: AppLocale.delegates,
         theme: AppTheme.light(),
         home: Scaffold(
           body: Center(
@@ -299,12 +387,16 @@ Future<void> _bootstrapWithParticipantId(String participantId) async {
 
   NetworkSimulator.instance.start();
   await NotificationService.initialize();
+  if (!kDebugMode) {
+    unawaited(NotificationService.scheduleEngagementRemindersIfNeeded());
+  }
 
   runApp(_StudyRoot(session: session, tasksBox: tasksBox));
   // Android 13+: o pedido de POST_NOTIFICATIONS precisa de manifest + Activity;
   // após o primeiro frame do ecrã principal o diálogo do sistema costuma aparecer.
   WidgetsBinding.instance.addPostFrameCallback((_) {
     unawaited(NotificationService.requestAndroidPostNotificationsPermission());
+    unawaited(NotificationService.requestBatteryOptimizationExemption());
   });
 }
 
@@ -323,6 +415,9 @@ class _StudyRoot extends StatelessWidget {
           final cfg = s.remoteConfig;
           if (cfg == null) {
             return MaterialApp(
+              locale: AppLocale.defaultLocale,
+              supportedLocales: AppLocale.supportedLocales,
+              localizationsDelegates: AppLocale.delegates,
               theme: AppTheme.light(),
               home: const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
@@ -331,6 +426,9 @@ class _StudyRoot extends StatelessWidget {
           }
           if (!cfg.appEnabled) {
             return MaterialApp(
+              locale: AppLocale.defaultLocale,
+              supportedLocales: AppLocale.supportedLocales,
+              localizationsDelegates: AppLocale.delegates,
               theme: AppTheme.light(),
               home: const Scaffold(
                 body: Center(
@@ -366,6 +464,7 @@ class _StudyRoot extends StatelessWidget {
               Provider<TaskRepository>.value(value: active),
               if (offlineForSync != null)
                 Provider<SyncService>(
+                  lazy: false,
                   create: (_) {
                     final sync = SyncService(
                       localRepo: offlineForSync,
@@ -385,6 +484,8 @@ class _StudyRoot extends StatelessWidget {
 }
 
 void _applyFirestorePersistence(bool onlineFirst) {
+  if (_firestorePersistenceOnlineFirst == onlineFirst) return;
+  _firestorePersistenceOnlineFirst = onlineFirst;
   FirebaseFirestore.instance.settings = Settings(
     persistenceEnabled: !onlineFirst,
   );

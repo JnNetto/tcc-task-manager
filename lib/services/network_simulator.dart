@@ -148,13 +148,21 @@ class NetworkSimulator {
     }
   }
 
-  Future<bool> checkSyncAllowed(String context) async {
+  /// Bloqueia apenas **envio** (Hive → Firestore) durante degradação simulada.
+  /// O **pull** (referência remota → Hive) não usa isto, para o offline-first
+  /// convergir com o canónico sempre que a rede real responder (cf. especificação).
+  Future<bool> checkPushToRemoteAllowed(String context) async {
     if (!isDegraded) return true;
     TelemetryService.instance.logSyncBlocked(
-      reason: '${degradationCause.name}:$context',
+      reason: 'push_blocked:${degradationCause.name}:$context',
     );
     return false;
   }
+
+  /// Mantido por compatibilidade; preferir [checkPushToRemoteAllowed].
+  @Deprecated('Use checkPushToRemoteAllowed')
+  Future<bool> checkSyncAllowed(String context) =>
+      checkPushToRemoteAllowed(context);
 
   void dispose() {
     _windowCheckTimer?.cancel();

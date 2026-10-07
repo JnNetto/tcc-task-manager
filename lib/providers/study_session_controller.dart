@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
@@ -13,7 +14,8 @@ class StudySessionController extends ChangeNotifier with WidgetsBindingObserver 
     required this.participantId,
     required this.studyStartDate,
     required ParticipantRemoteConfigService remote,
-    this.pollInterval = const Duration(minutes: 2),
+    this.pollInterval = const Duration(seconds: 30),
+    this.onArchitectureTransition,
     ParticipantStudyConfig? fixedConfig,
   })  : _remote = remote,
         _fixedConfig = fixedConfig {
@@ -22,6 +24,7 @@ class StudySessionController extends ChangeNotifier with WidgetsBindingObserver 
       _config = _fixedConfig;
       notifyListeners();
     } else {
+      _listenParticipantNode();
       unawaited(refreshRemoteConfig());
       _timer = Timer.periodic(
         pollInterval,
@@ -36,9 +39,15 @@ class StudySessionController extends ChangeNotifier with WidgetsBindingObserver 
   final Duration pollInterval;
   final ParticipantStudyConfig? _fixedConfig;
 
+  /// Chamado quando a arquitetura remota muda (ex.: flush Hive → Firestore ao sair de offline-first).
+  final Future<void> Function(String oldArchitecture, String newArchitecture)?
+      onArchitectureTransition;
+
   ParticipantStudyConfig? _config;
   Object? _lastError;
   Timer? _timer;
+  StreamSubscription<DatabaseEvent>? _rtdbParticipantSub;
+  Future<void> _refreshQueue = Future<void>.value();
 
   ParticipantStudyConfig? get remoteConfig => _config;
   Object? get lastRemoteError => _lastError;
@@ -56,34 +65,63 @@ class StudySessionController extends ChangeNotifier with WidgetsBindingObserver 
   int get dayOfStudy => DateTime.now().difference(studyStartDate).inDays + 1;
 
   Future<void> refreshRemoteConfig() async {
-    if (_fixedConfig != null) {
-      _config = _fixedConfig;
-      return;
-    }
+    final ticket = Completer<void>();
+    final previous = _refreshQueue;
+    _refreshQueue = ticket.future;
+    await previous;
     try {
-      final next = await _remote.fetchParticipant(participantId);
-      if (next == null) {
-        _lastError = StateError('participant_not_found');
-        notifyListeners();
+      if (_fixedConfig != null) {
+        _config = _fixedConfig;
         return;
       }
-      _lastError = null;
-      final prev = _config;
-      _config = next;
-      if (prev == null ||
-          prev.architecture != next.architecture ||
-          prev.appEnabled != next.appEnabled ||
-          prev.telemetryEnabled != next.telemetryEnabled ||
-          prev.profileComplete != next.profileComplete) {
+      try {
+        if (await _remote.fetchParticipant(participantId) == null) {
+          _lastError = StateError('participant_not_found');
+          notifyListeners();
+          return;
+        }
+        final resolved =
+            await _remote.ensureEnrollmentMetaAndPhaseTally(participantId);
+        _lastError = null;
+        final prev = _config;
+        if (prev != null &&
+            prev.architecture != resolved.architecture &&
+            onArchitectureTransition != null) {
+          await onArchitectureTransition!(
+            prev.architecture,
+            resolved.architecture,
+          );
+        }
+        _config = resolved;
+        if (prev == null ||
+            prev.architecture != resolved.architecture ||
+            prev.appEnabled != resolved.appEnabled ||
+            prev.telemetryEnabled != resolved.telemetryEnabled ||
+            prev.profileComplete != resolved.profileComplete ||
+            prev.daysOnlinePhase != resolved.daysOnlinePhase ||
+            prev.daysOfflinePhase != resolved.daysOfflinePhase) {
+          notifyListeners();
+        }
+      } catch (e, st) {
+        _lastError = e;
+        if (kDebugMode) {
+          debugPrint('StudySessionController.refresh error: $e\n$st');
+        }
         notifyListeners();
       }
-    } catch (e, st) {
-      _lastError = e;
-      if (kDebugMode) {
-        debugPrint('StudySessionController.refresh error: $e\n$st');
-      }
-      notifyListeners();
+    } finally {
+      ticket.complete();
     }
+  }
+
+  void _listenParticipantNode() {
+    _rtdbParticipantSub?.cancel();
+    _rtdbParticipantSub = FirebaseDatabase.instance
+        .ref('participants/$participantId')
+        .onValue
+        .listen((_) {
+      unawaited(refreshRemoteConfig());
+    });
   }
 
   @override
@@ -97,6 +135,7 @@ class StudySessionController extends ChangeNotifier with WidgetsBindingObserver 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _rtdbParticipantSub?.cancel();
     _timer?.cancel();
     super.dispose();
   }
