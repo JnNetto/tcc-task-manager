@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "Se usar este software, os instrumentos ou os resultados, cite-o com os metadados abaixo."
+type: software
+title: "tcc-task-manager: aplicativo, instrumentos e análise do estudo online-first vs offline-first"
+abstract: >-
+  Aplicativo Flutter de gerenciamento de tarefas que opera em dois modos
+  (online-first sobre Cloud Firestore e offline-first com Hive e
+  sincronização), com simulador de conectividade limitada embarcado e
+  telemetria no Firebase Realtime Database. Inclui os questionários (SUS e
+  escalas próprias de confiabilidade e contexto de uso), o pipeline de análise
+  em Python e resultados agregados de um experimento de campo within-subjects
+  com 21 participantes, realizado para o Trabalho de Conclusão de Curso
+  "Avaliação Empírica do Impacto de Arquiteturas Offline-First na Experiência
+  do Usuário em Aplicativos Móveis" (Engenharia de Software, iCEV, 2026).
+authors:
+  - given-names: "João"
+    family-names: "Antônio"
+    affiliation: "iCEV"
+version: "1.0.1"
+date-released: "2026-10-07"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/JnNetto/tcc-task-manager"
+keywords:
+  - offline-first
+  - online-first
+  - mobile
+  - Flutter
+  - usabilidade
+  - System Usability Scale
+  - sincronização
+  - experimento within-subjects

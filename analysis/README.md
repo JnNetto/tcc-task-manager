@@ -7,9 +7,9 @@ projeto (`especificacoes_tecnicas_v4 (1).md`, seções 1.2, 2.4-2.6 e 13.2).
 
 ## O que o script faz
 
-1. Busca `participants/*` e `telemetry/*` via REST API do RTDB (sem
-   credenciais — assume regras de leitura abertas; veja a observação de
-   segurança abaixo).
+1. Lê `participants/*` e `telemetry/*` de um snapshot local do RTDB ou,
+   se as regras permitirem, via REST (veja a observação de segurança
+   abaixo).
 2. Para cada participante, recalcula de forma independente qual
    arquitetura (`online-first` / `offline-first`) estava vigente em cada
    questionário (T1/T2), usando `architecture_timeline` + `study_started_at`
@@ -73,13 +73,21 @@ python analyze_full_study.py \
 
 ## Observação de segurança
 
-O script lê o RTDB **sem autenticação**, via REST API pública
-(`{database_url}/participants.json`, `{database_url}/telemetry.json`).
-Isso só funciona enquanto as regras de leitura do RTDB estiverem abertas
-(modo de desenvolvimento — ver `docs/firebase_rtdb_schema.md`). Antes de
-publicar o app com dados reais de participantes, as regras devem ser
-restritas; nesse caso, este script precisará ser adaptado para usar
-autenticação (ex.: Firebase Admin SDK com credenciais de serviço).
+Desde 07/10/2026 as regras do RTDB e do Firestore negam leitura e escrita a
+qualquer cliente (`database.rules.json`, `firestore.rules`). A leitura REST
+sem credencial passa a receber 401, e `fetch_data.py` usa o snapshot mais
+recente em `analysis/data/` (`rtdb_snapshot_*.json`). Também é possível
+indicar o arquivo explicitamente:
+
+```bash
+TCC_RTDB_SNAPSHOT=analysis/data/rtdb_snapshot_2026-10-07.json python analyze_full_study.py
+```
+
+O snapshot foi gerado com `firebase database:get / -o arquivo.json` (conta
+com acesso ao projeto). **Ele contém nomes de participantes**: a pasta
+`analysis/data/` é ignorada pelo Git e não faz parte do repositório público.
+Quem não tem o snapshot pode reproduzir o pipeline apenas com dados próprios;
+os resultados agregados publicados estão em `analysis/resultados_agregados/`.
 
 ## Métricas objetivas de confiabilidade (H2)
 

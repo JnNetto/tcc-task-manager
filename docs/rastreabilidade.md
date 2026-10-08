@@ -840,6 +840,31 @@
 | **Risco residual** | Snapshot com nomes sincronizado pelo OneDrive; app sem acesso ao banco |
 | **Status** | Parcial |
 
+## 2026-10-07 - Licencas, metadados de citacao e resultados agregados para o repositorio publico
+
+- **Contexto:** continuacao da entrada anterior. Decisoes do autor: codigo MIT; documentos, questionarios e resultados agregados CC BY 4.0; autor "Joao Antonio" (iCEV), sem orientador nos metadados; publicar so resultados agregados; publicar agora.
+- **Decisao:**
+  - `LICENSE` (MIT) e `LICENSE-CC-BY-4.0.md` (lista os caminhos cobertos; ressalva de que os itens do SUS sao de Brooke, 1996).
+  - `CITATION.cff` (licencas MIT e CC-BY-4.0, versao 1.0.1) e `.zenodo.json` (software, idioma `por`, licenca `mit`, descricao citando CC BY 4.0 e a nao publicacao dos dados brutos).
+  - `analysis/resultados_agregados/`: copias de `hypothesis_tests.md`, `cronbach_alphas.csv`, `comparative_bipolar.csv` (gerados em 27/07/2026, versoes reportadas no TCC) e `datas_fases_resumo.md` (07/10/2026), com README de origem.
+  - Excluidos da publicacao: `pending_gaps_report.md` (secao demografica com celulas n=1 e idade maxima), todos os CSV por participante, respostas abertas, logs de console e o snapshot.
+  - `README.md` da raiz reescrito (era o modelo padrao do Flutter): descricao, estrutura, build, analise, politica de dados, licencas, citacao. `analysis/README.md`: leitura via snapshot e regras fechadas.
+- **Problema identificado:** o TCC (Secao 3.3) informa Flutter 3.24, mas `pubspec.yaml` exige Dart `^3.11.5` e o SDK instalado e Flutter 3.41.9 (Dart 3.11.5, lancado em 29/04/2026, antes da coleta). O README registra 3.41.9; o texto do TCC precisa ser corrigido pelo autor.
+- **Validacao:** varredura de nomes em 226 arquivos versionaveis: ocorrencias apenas em `LICENSE`, `LICENSE-CC-BY-4.0.md`, `CITATION.cff`, `.zenodo.json` e na especificacao, todas confirmadas como o nome do autor (script compara tokens sem exibir nomes). Unico codigo de participante nos agregados: P016 (aviso de pareamento). `.zenodo.json` e `CITATION.cff` analisados sem erro (json/yaml).
+- **Proximos passos nesta sessao:** commit, tag anotada `v1.0.1`, push, visibilidade publica, release no GitHub apos o autor ativar o repositorio no Zenodo, badge do DOI.
+- **Status:** Parcial (publicacao em andamento).
+
+| Campo | Conteudo |
+|--------|-----------|
+| **ID / tema** | Licencas, citacao e agregados para publicacao |
+| **Contexto** | Repositorio sera publico e arquivado no Zenodo |
+| **Causa** | Sem licenca, sem metadados e README padrao do Flutter |
+| **Decisao** | MIT + CC BY 4.0; CITATION.cff e .zenodo.json; so agregados |
+| **Arquivos alterados** | LICENSE, LICENSE-CC-BY-4.0.md, CITATION.cff, .zenodo.json, README.md, analysis/README.md, analysis/resultados_agregados/*, rastreabilidade |
+| **Validacao** | Varredura de nomes; parse json/yaml |
+| **Risco residual** | Versao do Flutter divergente no TCC; build exato do APK distribuido a confirmar pelo autor |
+| **Status** | Parcial |
+
 ## Modelo para proximos registros
 
 - **Data/hora:**

@@ -1,0 +1,13 @@
+Escala,Recorte,Itens,n,Alfa,Interpretação
+SUS (validacao do pipeline),todas,10,42,0.697,questionável
+SUS (validacao do pipeline),T1,10,21,0.69,questionável
+SUS (validacao do pipeline),T2,10,21,0.714,aceitável
+Estabilidade/funcionamento,todas,9,42,0.804,boa
+Estabilidade/funcionamento,T1,9,21,0.83,boa
+Estabilidade/funcionamento,T2,9,21,0.769,aceitável
+Confianca no aplicativo,todas,10,42,0.934,excelente
+Confianca no aplicativo,T1,10,21,0.927,excelente
+Confianca no aplicativo,T2,10,21,0.943,excelente
+Contexto de uso,todas,5,42,0.772,aceitável
+Contexto de uso,T1,5,21,0.858,boa
+Contexto de uso,T2,5,21,0.574,inaceitável — não usar como escala somada
