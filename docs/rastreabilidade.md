@@ -851,8 +851,10 @@
   - `README.md` da raiz reescrito (era o modelo padrao do Flutter): descricao, estrutura, build, analise, politica de dados, licencas, citacao. `analysis/README.md`: leitura via snapshot e regras fechadas.
 - **Problema identificado:** o TCC (Secao 3.3) informa Flutter 3.24, mas `pubspec.yaml` exige Dart `^3.11.5` e o SDK instalado e Flutter 3.41.9 (Dart 3.11.5, lancado em 29/04/2026, antes da coleta). O README registra 3.41.9; o texto do TCC precisa ser corrigido pelo autor.
 - **Validacao:** varredura de nomes em 226 arquivos versionaveis: ocorrencias apenas em `LICENSE`, `LICENSE-CC-BY-4.0.md`, `CITATION.cff`, `.zenodo.json` e na especificacao, todas confirmadas como o nome do autor (script compara tokens sem exibir nomes). Unico codigo de participante nos agregados: P016 (aviso de pareamento). `.zenodo.json` e `CITATION.cff` analisados sem erro (json/yaml).
-- **Proximos passos nesta sessao:** commit, tag anotada `v1.0.1`, push, visibilidade publica, release no GitHub apos o autor ativar o repositorio no Zenodo, badge do DOI.
-- **Status:** Parcial (publicacao em andamento).
+- **Publicacao:** commit `5999706`; tag anotada `v1.0.1` em `5999706` (push para `JnNetto/tcc-task-manager`). Antes de abrir, o historico foi verificado: unico branch `main`; nenhum `.docx`, snapshot, log ou CSV por participante em qualquer commit (so os dois CSV agregados). `gh repo edit --visibility public` executado; `gh repo view` confirma `PUBLIC` e licenca detectada `mit`.
+- **Bloqueio externo:** o autor relatou um problema ao ativar o repositorio no Zenodo (login/integracao com GitHub). A release do GitHub nao foi criada para que o Zenodo possa arquivar `v1.0.1` quando a integracao estiver ativa; sem release, nao ha DOI.
+- **Proximo passo:** resolver o acesso ao Zenodo, ativar `JnNetto/tcc-task-manager` em https://zenodo.org/account/settings/github/, criar a release a partir da tag existente (`gh release create v1.0.1`) e adicionar o DOI ao README e ao TCC.
+- **Status:** Parcial (repositorio publico e versionado; DOI pendente por bloqueio externo).
 
 | Campo | Conteudo |
 |--------|-----------|
@@ -862,7 +864,7 @@
 | **Decisao** | MIT + CC BY 4.0; CITATION.cff e .zenodo.json; so agregados |
 | **Arquivos alterados** | LICENSE, LICENSE-CC-BY-4.0.md, CITATION.cff, .zenodo.json, README.md, analysis/README.md, analysis/resultados_agregados/*, rastreabilidade |
 | **Validacao** | Varredura de nomes; parse json/yaml |
-| **Risco residual** | Versao do Flutter divergente no TCC; build exato do APK distribuido a confirmar pelo autor |
+| **Risco residual** | DOI pendente (Zenodo); versao do Flutter divergente no TCC; build exato do APK distribuido a confirmar pelo autor |
 | **Status** | Parcial |
 
 ## Modelo para proximos registros

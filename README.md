@@ -55,4 +55,4 @@ O repositório contém apenas código, instrumentos, documentação e estatísti
 
 ## Como citar
 
-Use os metadados de `CITATION.cff` (botão "Cite this repository" no GitHub) ou o DOI do Zenodo correspondente à versão.
+Use os metadados de `CITATION.cff` (botão "Cite this repository" no GitHub), indicando a versão `v1.0.1`.
