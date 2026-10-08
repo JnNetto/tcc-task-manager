@@ -9,8 +9,8 @@ Fontes, em ordem de prioridade:
    recusar a leitura (401/403, regras fechadas), usa o snapshot mais recente
    em `analysis/data/`.
 
-O snapshot contém nomes de participantes: fica em `analysis/data/`, que é
-ignorado pelo Git, e não deve ser publicado.
+O snapshot é pseudonimizado (sem nomes, mas com dados por participante): fica
+em `analysis/data/`, que é ignorado pelo Git, e não deve ser publicado.
 """
 
 from __future__ import annotations

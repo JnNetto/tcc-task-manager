@@ -867,6 +867,35 @@
 | **Risco residual** | DOI pendente (Zenodo); versao do Flutter divergente no TCC; build exato do APK distribuido a confirmar pelo autor |
 | **Status** | Parcial |
 
+## 2026-10-08 - Pseudonimizacao dos participantes no RTDB
+
+- **Contexto:** o autor precisa desvincular os participantes de suas identidades. O termo de consentimento (`lib/legal/research_consent.dart`, v1.0) garante direito de acesso e eliminacao; por isso o autor optou por guardar a correspondencia codigo -> nome numa tabela-chave separada, a destruir apos a defesa, e manter o Firestore como esta.
+- **Inventario (somente caminhos e contagens, sem valores):** nomes apareciam apenas em `participants/{pid}/display_name`, `profile_questionnaire/name`, `subjective_questionnaires/T1|T2/participant_display_name`. Nenhum nome na telemetria (~410 mil eventos), nas respostas abertas, em `study_config`, em `analysis/output/` ou no historico Git. Firestore (tarefas e impressoes) nao tem nomes e nao e lido pelo pipeline nem citado no TCC.
+- **Decisao:**
+  - Os quatro campos foram substituidos pelo proprio codigo (ex.: `P001`), em vez de apagados: o app trata nome vazio como perfil incompleto (`profileComplete`) e o painel lista por nome.
+  - P000 (conta do pesquisador, sem T1/T2) mantida: contem apenas o nome do autor.
+  - Tabela-chave `chave_participantes.csv` (40 linhas) gravada numa pasta local fora do OneDrive e do repositorio.
+  - Patch multi-path (113 campos, so codigos) aplicado com `firebase database:update /participants <patch> --project tcc-task-manager-82e52 --force` (CLI com conta administradora; as regras fechadas nao se aplicam).
+  - Snapshot local substituido por `analysis/data/rtdb_snapshot_2026-10-07_sem_nomes.json`; o original com nomes foi apagado, junto com copias temporarias.
+- **Validacao:**
+  - Snapshot sem nomes x original: `telemetry` e `study_config` identicos; em `participants`, exatamente as 113 folhas do patch mudaram.
+  - Pipeline (`analyze_full_study.py`, `analyze_pending_gaps.py`, `export_phase_dates.py`, `export_open_answers.py`) rodado com os dois snapshots: 12 arquivos de saida, 0 diferencas.
+  - `firebase database:get /participants` apos o update: 41 registros identicos ao snapshot sem nomes; busca com 53 termos (nomes completos e primeiros nomes da tabela-chave) encontra apenas os 2 campos da P000 (nome do autor).
+  - `fetch_data.py` com fallback automatico: 40 participantes, 28 com telemetria; todo `display_name` igual ao codigo.
+- **Problema durante a execucao:** primeira rodada da comparacao saiu com codigo 2 em todos os scripts (caminho relativo do repositorio duplicava `analysis/`); corrigido resolvendo o caminho absoluto e repetido com sucesso.
+- **Status:** Concluido para RTDB e snapshot local.
+
+| Campo | Conteudo |
+|--------|-----------|
+| **ID / tema** | Pseudonimizacao dos participantes no RTDB |
+| **Contexto** | Desvincular codigos de participante das identidades |
+| **Causa** | Nomes gravados no cadastro, no perfil e nos questionarios importados |
+| **Decisao** | Nomes trocados pelo codigo; tabela-chave fora do OneDrive ate a defesa; Firestore mantido |
+| **Arquivos alterados** | RTDB `/participants` (113 campos), snapshot local, analysis/README.md, analysis/fetch_data.py, rastreabilidade |
+| **Validacao** | Diff de folhas = patch; saidas da analise identicas; RTDB remoto igual ao snapshot limpo; 0 nomes de participantes |
+| **Risco residual** | Copia do snapshot original na lixeira e no historico de versoes do OneDrive; tabela-chave sem criptografia ate o autor protege-la; quase-identificadores (idade, genero, escolaridade, respostas abertas) por codigo; canais externos (lista de cadastro, envio dos T1/T2) e backups do Firebase, se houver |
+| **Status** | Concluido (RTDB); pendente do autor: limpar lixeira do OneDrive, proteger a tabela-chave e destrui-la apos a defesa |
+
 ## Modelo para proximos registros
 
 - **Data/hora:**

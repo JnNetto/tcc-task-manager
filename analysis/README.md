@@ -80,12 +80,16 @@ recente em `analysis/data/` (`rtdb_snapshot_*.json`). Também é possível
 indicar o arquivo explicitamente:
 
 ```bash
-TCC_RTDB_SNAPSHOT=analysis/data/rtdb_snapshot_2026-10-07.json python analyze_full_study.py
+TCC_RTDB_SNAPSHOT=analysis/data/rtdb_snapshot_2026-10-07_sem_nomes.json python analyze_full_study.py
 ```
 
 O snapshot foi gerado com `firebase database:get / -o arquivo.json` (conta
-com acesso ao projeto). **Ele contém nomes de participantes**: a pasta
-`analysis/data/` é ignorada pelo Git e não faz parte do repositório público.
+com acesso ao projeto). Desde 08/10/2026 os campos de nome do RTDB e do
+snapshot guardam o próprio código do participante; a correspondência
+código → nome fica numa tabela-chave fora do repositório e do OneDrive. Os
+dados continuam pseudonimizados (idade, gênero, escolaridade, respostas
+abertas): a pasta `analysis/data/` é ignorada pelo Git e não faz parte do
+repositório público.
 Quem não tem o snapshot pode reproduzir o pipeline apenas com dados próprios;
 os resultados agregados publicados estão em `analysis/resultados_agregados/`.
 
